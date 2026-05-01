@@ -6,6 +6,7 @@ let API_URL = localStorage.getItem('pos_api_url') || DEFAULT_API_URL;
 
 let products = [];
 let cart = [];
+let selectedCategory = 'Semua';
 
 // Inisialisasi
 document.addEventListener('DOMContentLoaded', () => {
@@ -64,11 +65,12 @@ async function fetchProducts() {
     try {
         const response = await fetch(`${API_URL}?action=getProducts`);
         products = await response.json();
+        renderCategories(products);
         renderProducts(products);
     } catch (error) {
         console.error("Gagal memuat produk:", error);
-        // If it's a render error, we might still have products
         if (products && products.length > 0) {
+            renderCategories(products);
             renderProducts(products);
         }
     }
@@ -86,7 +88,6 @@ async function fetchDashboard() {
             omzetEl.innerText = formatRupiah(omzetValue);
         }
         
-        // Update laporan jika elemennya ada
         if (stats) updateReportUI(stats);
     } catch (error) {
         console.error("Gagal memuat dashboard:", error);
@@ -119,6 +120,27 @@ function updateReportUI(stats) {
         ${createCard('Minggu Ini', stats.weekly, 'purple')}
         ${createCard('Bulan Ini', stats.monthly, 'orange')}
     `;
+}
+
+// Render Kategori
+function renderCategories(data) {
+    const container = document.getElementById('category-filter');
+    if (!container || !data) return;
+
+    const categories = ['Semua', ...new Set(data.map(p => p.Kategori).filter(k => k))];
+    container.innerHTML = '';
+
+    categories.forEach(cat => {
+        const btn = document.createElement('button');
+        btn.className = `px-4 py-1 rounded-full text-xs font-medium whitespace-nowrap transition ${selectedCategory === cat ? 'bg-teal-600 text-white' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'}`;
+        btn.innerText = cat;
+        btn.onclick = () => {
+            selectedCategory = cat;
+            renderCategories(data);
+            filterProducts();
+        };
+        container.appendChild(btn);
+    });
 }
 
 // Tampilkan Produk ke Grid
@@ -315,7 +337,12 @@ function filterProducts() {
     const filtered = products.filter(p => {
         const nama = (p.Nama_Produk || '').toLowerCase();
         const sku = (p.SKU || '').toString().toLowerCase();
-        return nama.includes(search) || sku.includes(search);
+        const kategori = p.Kategori || '';
+        
+        const matchesSearch = nama.includes(search) || sku.includes(search);
+        const matchesCategory = selectedCategory === 'Semua' || kategori === selectedCategory;
+        
+        return matchesSearch && matchesCategory;
     });
     renderProducts(filtered);
 }
