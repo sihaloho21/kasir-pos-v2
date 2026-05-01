@@ -29,6 +29,10 @@
                 <i class="fas fa-chart-line w-8 text-center"></i>
                 <span class="hidden md:block ml-2">Laporan</span>
             </button>
+            <button onclick="showPage('settings')" class="nav-link w-full flex items-center p-4 hover:bg-teal-700 transition">
+                <i class="fas fa-cog w-8 text-center"></i>
+                <span class="hidden md:block ml-2">Pengaturan</span>
+            </button>
         </div>
         <div class="p-4 border-t border-teal-700 text-[10px] text-teal-300 text-center hidden md:block">
             v2.0 - Stock Management
@@ -97,6 +101,22 @@
         <div id="page-report" class="page flex-1 p-6 overflow-y-auto hidden">
             <h2 class="text-2xl font-bold mb-6">Laporan Penjualan</h2>
             <div id="report-container" class="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
+        </div>
+
+        <!-- Halaman PENGATURAN -->
+        <div id="page-settings" class="page flex-1 p-6 overflow-y-auto hidden">
+            <h2 class="text-2xl font-bold mb-6">Pengaturan Sistem</h2>
+            <div class="max-w-2xl bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <h3 class="font-bold text-teal-700 mb-4"><i class="fas fa-link mr-2"></i>Konfigurasi API</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Google Apps Script URL</label>
+                        <input type="text" id="settings-api-url" placeholder="https://script.google.com/macros/s/.../exec" class="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-teal-500">
+                        <p class="text-[10px] text-gray-400 mt-1">Masukkan URL Web App dari Google Apps Script Anda.</p>
+                    </div>
+                    <button onclick="saveSettings()" class="w-full bg-teal-600 text-white py-2 rounded-lg font-bold hover:bg-teal-700 transition">Simpan Pengaturan</button>
+                </div>
+            </div>
         </div>
     </div>
 

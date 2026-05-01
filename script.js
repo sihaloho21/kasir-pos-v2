@@ -1,10 +1,18 @@
-const API_URL = "https://script.google.com/macros/s/AKfycbxz260m0RdQa2YNBVzt7RU7PQG3ZeaVwr6VmTGQEfF18FVFxTmtbBEkMOIQ1y_ZkuKc/exec";
+// Default API URL (Fallback)
+const DEFAULT_API_URL = "https://script.google.com/macros/s/AKfycbxz260m0RdQa2YNBVzt7RU7PQG3ZeaVwr6VmTGQEfF18FVFxTmtbBEkMOIQ1y_ZkuKc/exec";
+
+// Get API URL from localStorage or use default
+let API_URL = localStorage.getItem('pos_api_url') || DEFAULT_API_URL;
 
 let products = [];
 let cart = [];
 
 // Inisialisasi
 document.addEventListener('DOMContentLoaded', () => {
+    // Set value in settings input
+    const settingsInput = document.getElementById('settings-api-url');
+    if (settingsInput) settingsInput.value = API_URL;
+
     fetchProducts();
     fetchDashboard();
     
@@ -28,7 +36,24 @@ function showPage(pageId) {
     if (targetPage) targetPage.classList.remove('hidden');
     
     // Menambah class active ke tombol yang diklik
-    event.currentTarget.classList.add('bg-teal-700');
+    if (event && event.currentTarget) {
+        event.currentTarget.classList.add('bg-teal-700');
+    }
+}
+
+// Fungsi Pengaturan
+function saveSettings() {
+    const newUrl = document.getElementById('settings-api-url').value.trim();
+    if (!newUrl) return alert('URL tidak boleh kosong!');
+    
+    localStorage.setItem('pos_api_url', newUrl);
+    API_URL = newUrl;
+    alert('Pengaturan disimpan! Aplikasi akan memuat ulang data.');
+    
+    // Refresh data
+    fetchProducts();
+    fetchDashboard();
+    showPage('pos');
 }
 
 // Ambil Data Produk
@@ -39,6 +64,7 @@ async function fetchProducts() {
         renderProducts(products);
     } catch (error) {
         console.error("Gagal memuat produk:", error);
+        alert("Gagal memuat produk. Pastikan URL API benar dan sudah di-deploy sebagai Web App.");
     }
 }
 
