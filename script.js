@@ -109,7 +109,13 @@ async function fetchDailyProfit() {
         const response = await fetch(`${API_URL}?action=getDailyProfitStats`);
         const data = await response.json();
         
-        renderDailyProfitTable(data);
+        // Ensure data is an array before rendering
+        if (Array.isArray(data)) {
+            renderDailyProfitTable(data);
+        } else {
+            console.error("API returned non-array data:", data);
+            tableBody.innerHTML = '<tr><td colspan="3" class="p-8 text-center text-orange-500 italic">Format data tidak valid. Pastikan Backend sudah diperbarui.</td></tr>';
+        }
     } catch (error) {
         console.error("Gagal memuat laporan laba harian:", error);
         tableBody.innerHTML = '<tr><td colspan="3" class="p-4 text-center text-red-500">Gagal memuat data. Periksa koneksi atau URL API.</td></tr>';
@@ -120,7 +126,7 @@ function renderDailyProfitTable(data) {
     const tableBody = document.getElementById('daily-profit-table-body');
     if (!tableBody) return;
 
-    if (!data || data.length === 0) {
+    if (!Array.isArray(data) || data.length === 0) {
         tableBody.innerHTML = '<tr><td colspan="3" class="p-8 text-center text-gray-400 italic">Belum ada data transaksi.</td></tr>';
         return;
     }
