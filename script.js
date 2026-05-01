@@ -36,14 +36,17 @@ function showPage(pageId) {
     if (targetPage) targetPage.classList.remove('hidden');
     
     // Menambah class active ke tombol yang diklik
-    if (event && event.currentTarget) {
-        event.currentTarget.classList.add('bg-teal-700');
+    if (window.event && window.event.currentTarget) {
+        window.event.currentTarget.classList.add('bg-teal-700');
     }
 }
 
 // Fungsi Pengaturan
 function saveSettings() {
-    const newUrl = document.getElementById('settings-api-url').value.trim();
+    const settingsInput = document.getElementById('settings-api-url');
+    if (!settingsInput) return;
+    
+    const newUrl = settingsInput.value.trim();
     if (!newUrl) return alert('URL tidak boleh kosong!');
     
     localStorage.setItem('pos_api_url', newUrl);
@@ -64,7 +67,10 @@ async function fetchProducts() {
         renderProducts(products);
     } catch (error) {
         console.error("Gagal memuat produk:", error);
-        alert("Gagal memuat produk. Pastikan URL API benar dan sudah di-deploy sebagai Web App.");
+        // If it's a render error, we might still have products
+        if (products && products.length > 0) {
+            renderProducts(products);
+        }
     }
 }
 
@@ -75,10 +81,13 @@ async function fetchDashboard() {
         const stats = await response.json();
         
         const omzetEl = document.getElementById('today-omzet');
-        if (omzetEl) omzetEl.innerText = formatRupiah(stats.daily ? stats.daily.omzet : stats.todayOmzet);
+        if (omzetEl && stats) {
+            const omzetValue = stats.daily ? stats.daily.omzet : (stats.todayOmzet || 0);
+            omzetEl.innerText = formatRupiah(omzetValue);
+        }
         
         // Update laporan jika elemennya ada
-        updateReportUI(stats);
+        if (stats) updateReportUI(stats);
     } catch (error) {
         console.error("Gagal memuat dashboard:", error);
     }
@@ -86,16 +95,24 @@ async function fetchDashboard() {
 
 function updateReportUI(stats) {
     const container = document.getElementById('report-container');
-    if (!container) return;
+    if (!container || !stats) return;
 
-    const createCard = (title, data, color) => `
-        <div class="bg-${color}-50 p-4 rounded-xl border border-${color}-100">
-            <h4 class="text-xs font-bold text-${color}-600 uppercase">${title}</h4>
-            <p class="text-xl font-black text-${color}-800">${formatRupiah(data.omzet)}</p>
-            <p class="text-xs text-${color}-500">Laba: ${formatRupiah(data.laba)}</p>
-            <p class="text-[10px] text-gray-500 mt-2 italic">Terlaris: ${data.top.nama} (${data.top.qty})</p>
-        </div>
-    `;
+    const createCard = (title, data, color) => {
+        if (!data) return '';
+        const omzet = data.omzet || 0;
+        const laba = data.laba || 0;
+        const topNama = data.top ? data.top.nama : '-';
+        const topQty = data.top ? data.top.qty : 0;
+        
+        return `
+            <div class="bg-${color}-50 p-4 rounded-xl border border-${color}-100">
+                <h4 class="text-xs font-bold text-${color}-600 uppercase">${title}</h4>
+                <p class="text-xl font-black text-${color}-800">${formatRupiah(omzet)}</p>
+                <p class="text-xs text-${color}-500">Laba: ${formatRupiah(laba)}</p>
+                <p class="text-[10px] text-gray-500 mt-2 italic">Terlaris: ${topNama} (${topQty})</p>
+            </div>
+        `;
+    };
 
     container.innerHTML = `
         ${createCard('Hari Ini', stats.daily, 'blue')}
@@ -107,12 +124,16 @@ function updateReportUI(stats) {
 // Tampilkan Produk ke Grid
 function renderProducts(data) {
     const grid = document.getElementById('product-grid');
-    if (!grid) return;
+    if (!grid || !data) return;
     grid.innerHTML = '';
     
     data.forEach(p => {
-        const isLow = p.SISA_STOK < 5;
-        const initial = p.Nama_Produk.substring(0, 2).toUpperCase();
+        const sisaStok = p.SISA_STOK || 0;
+        const harga = p.Perkiraan_Harga_Rp || 0;
+        const nama = p.Nama_Produk || 'Tanpa Nama';
+        
+        const isLow = sisaStok < 5;
+        const initial = nama.substring(0, 2).toUpperCase();
         
         const card = document.createElement('div');
         card.className = `product-card bg-white p-4 rounded-xl border ${isLow ? 'border-red-500 bg-red-50' : 'border-gray-100'} flex flex-col items-center text-center cursor-pointer hover:shadow-md transition`;
@@ -122,9 +143,9 @@ function renderProducts(data) {
             <div class="w-10 h-10 ${isLow ? 'bg-red-500' : 'bg-teal-600'} text-white flex items-center justify-center rounded-lg font-bold mb-2">
                 ${initial}
             </div>
-            <h3 class="text-xs font-medium text-gray-700 h-8 overflow-hidden">${p.Nama_Produk}</h3>
-            <p class="text-teal-600 font-bold text-sm">${formatRupiah(p.Perkiraan_Harga_Rp)}</p>
-            <p class="text-[10px] ${isLow ? 'text-red-600 font-bold' : 'text-gray-400'}">Stok: ${p.SISA_STOK} ${isLow ? '!' : ''}</p>
+            <h3 class="text-xs font-medium text-gray-700 h-8 overflow-hidden">${nama}</h3>
+            <p class="text-teal-600 font-bold text-sm">${formatRupiah(harga)}</p>
+            <p class="text-[10px] ${isLow ? 'text-red-600 font-bold' : 'text-gray-400'}">Stok: ${sisaStok} ${isLow ? '!' : ''}</p>
         `;
         grid.appendChild(card);
     });
@@ -132,31 +153,41 @@ function renderProducts(data) {
 }
 
 function updateStockDropdowns(data) {
+    if (!data) return;
     const selects = ['stock-sku', 'opname-sku'];
     selects.forEach(id => {
         const el = document.getElementById(id);
         if (!el) return;
         el.innerHTML = '<option value="">Pilih Produk...</option>';
         data.forEach(p => {
-            el.innerHTML += `<option value="${p.SKU}">${p.Nama_Produk} (Stok: ${p.SISA_STOK})</option>`;
+            const sku = p.SKU || '';
+            const nama = p.Nama_Produk || 'Tanpa Nama';
+            const sisaStok = p.SISA_STOK || 0;
+            el.innerHTML += `<option value="${sku}">${nama} (Stok: ${sisaStok})</option>`;
         });
     });
 }
 
 // Tambah ke Keranjang
 function addToCart(product) {
+    if (!product || !product.SKU) return;
+    
     const existing = cart.find(item => item.SKU === product.SKU);
+    const harga = product.Perkiraan_Harga_Rp || 0;
+    const nama = product.Nama_Produk || 'Tanpa Nama';
+    const satuan = product.Satuan || '';
+
     if (existing) {
         existing.Qty += 1;
         existing.Total = existing.Qty * existing.Harga_Satuan;
     } else {
         cart.push({
             SKU: product.SKU,
-            Nama_Produk: product.Nama_Produk,
-            Satuan: product.Satuan,
-            Harga_Satuan: product.Perkiraan_Harga_Rp,
+            Nama_Produk: nama,
+            Satuan: satuan,
+            Harga_Satuan: harga,
             Qty: 1,
-            Total: product.Perkiraan_Harga_Rp
+            Total: harga
         });
     }
     renderCart();
@@ -193,6 +224,7 @@ function renderCart() {
 }
 
 function updateQty(index, delta) {
+    if (index < 0 || index >= cart.length) return;
     cart[index].Qty += delta;
     if (cart[index].Qty <= 0) cart.splice(index, 1);
     else cart[index].Total = cart[index].Qty * cart[index].Harga_Satuan;
@@ -209,6 +241,8 @@ function clearCart() {
 async function processPayment() {
     if (cart.length === 0) return alert('Keranjang kosong!');
     const btn = document.getElementById('btn-bayar');
+    if (!btn) return;
+    
     try {
         btn.disabled = true;
         btn.innerText = 'PROSES...';
@@ -223,16 +257,31 @@ async function processPayment() {
             renderCart();
             fetchProducts();
             fetchDashboard();
+        } else {
+            alert('Gagal: ' + (res.message || 'Terjadi kesalahan'));
         }
-    } catch (e) { alert('Gagal!'); }
-    finally { btn.disabled = false; btn.innerText = 'BAYAR'; }
+    } catch (e) { 
+        console.error(e);
+        alert('Gagal memproses pembayaran!'); 
+    }
+    finally { 
+        btn.disabled = false; 
+        btn.innerText = 'BAYAR'; 
+    }
 }
 
 async function processStockAction(type) {
-    const sku = document.getElementById(type === 'restock' ? 'stock-sku' : 'opname-sku').value;
-    const qty = document.getElementById(type === 'restock' ? 'stock-qty' : 'opname-qty').value;
-    const modal = type === 'restock' ? document.getElementById('stock-modal').value : null;
-    const alasan = document.getElementById(type === 'restock' ? 'stock-alasan' : 'opname-alasan').value;
+    const skuEl = document.getElementById(type === 'restock' ? 'stock-sku' : 'opname-sku');
+    const qtyEl = document.getElementById(type === 'restock' ? 'stock-qty' : 'opname-qty');
+    const modalEl = type === 'restock' ? document.getElementById('stock-modal') : null;
+    const alasanEl = document.getElementById(type === 'restock' ? 'stock-alasan' : 'opname-alasan');
+
+    if (!skuEl || !qtyEl) return;
+
+    const sku = skuEl.value;
+    const qty = qtyEl.value;
+    const modal = modalEl ? modalEl.value : null;
+    const alasan = alasanEl ? alasanEl.value : '';
 
     if (!sku || !qty) return alert('Lengkapi data!');
 
@@ -245,13 +294,29 @@ async function processStockAction(type) {
         if (res.status === 'success') {
             alert('Stok berhasil diperbarui!');
             fetchProducts(); // Refresh data tanpa reload halaman
+            // Clear inputs
+            qtyEl.value = '';
+            if (modalEl) modalEl.value = '';
+            if (alasanEl) alasanEl.value = '';
+        } else {
+            alert('Gagal: ' + (res.message || 'Terjadi kesalahan'));
         }
-    } catch (e) { alert('Gagal!'); }
+    } catch (e) { 
+        console.error(e);
+        alert('Gagal memperbarui stok!'); 
+    }
 }
 
 function filterProducts() {
-    const search = document.getElementById('search-input').value.toLowerCase();
-    const filtered = products.filter(p => p.Nama_Produk.toLowerCase().includes(search) || p.SKU.toString().includes(search));
+    const searchInput = document.getElementById('search-input');
+    if (!searchInput) return;
+    
+    const search = searchInput.value.toLowerCase();
+    const filtered = products.filter(p => {
+        const nama = (p.Nama_Produk || '').toLowerCase();
+        const sku = (p.SKU || '').toString().toLowerCase();
+        return nama.includes(search) || sku.includes(search);
+    });
     renderProducts(filtered);
 }
 
