@@ -31,11 +31,30 @@ async function fetchDashboard() {
     try {
         const response = await fetch(`${API_URL}?action=getDashboardStats`);
         const stats = await response.json();
-        document.getElementById('today-omzet').innerText = formatRupiah(stats.todayOmzet);
+        
+        // Update UI Laporan
+        document.getElementById('today-omzet').innerText = formatRupiah(stats.daily.omzet);
+        
+        // Daily
+        document.getElementById('rep-daily-omzet').innerText = formatRupiah(stats.daily.omzet);
+        document.getElementById('rep-daily-laba').innerText = formatRupiah(stats.daily.laba);
+        document.getElementById('rep-daily-top').innerText = `${stats.daily.top.nama} (${stats.daily.top.qty})`;
+        
+        // Weekly
+        document.getElementById('rep-weekly-omzet').innerText = formatRupiah(stats.weekly.omzet);
+        document.getElementById('rep-weekly-laba').innerText = formatRupiah(stats.weekly.laba);
+        document.getElementById('rep-weekly-top').innerText = `${stats.weekly.top.nama} (${stats.weekly.top.qty})`;
+        
+        // Monthly
+        document.getElementById('rep-monthly-omzet').innerText = formatRupiah(stats.monthly.omzet);
+        document.getElementById('rep-monthly-laba').innerText = formatRupiah(stats.monthly.laba);
+        document.getElementById('rep-monthly-top').innerText = `${stats.monthly.top.nama} (${stats.monthly.top.qty})`;
+        
     } catch (error) {
         console.error("Gagal memuat dashboard:", error);
     }
 }
+
 
 // Tampilkan Produk ke Grid
 function renderProducts(data) {
