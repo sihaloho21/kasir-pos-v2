@@ -223,6 +223,69 @@ function renderCategories() {
     });
 }
 
+// Tambahkan fungsi ini di script.js
+function showPage(pageId) {
+    document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
+    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('bg-teal-700', 'active'));
+    
+    document.getElementById('page-' + pageId).classList.remove('hidden');
+    event.currentTarget.classList.add('bg-teal-700');
+}
+
+// Update renderProducts untuk notifikasi stok menipis
+function renderProducts(data) {
+    const grid = document.getElementById('product-grid');
+    grid.innerHTML = '';
+    data.forEach(p => {
+        const isLow = p.SISA_STOK < 5; // Batas stok menipis
+        const card = document.createElement('div');
+        card.className = `product-card bg-white p-4 rounded-xl border ${isLow ? 'border-red-500 bg-red-50' : 'border-gray-100'} flex flex-col items-center text-center`;
+        card.onclick = () => addToCart(p);
+        card.innerHTML = `
+            <div class="${isLow ? 'bg-red-500' : 'bg-teal-600'} text-white p-2 rounded mb-2 font-bold">${p.Nama_Produk.substring(0,2).toUpperCase()}</div>
+            <h3 class="text-xs font-bold">${p.Nama_Produk}</h3>
+            <p class="text-teal-600 font-bold">${formatRupiah(p.Perkiraan_Harga_Rp)}</p>
+            <p class="text-[10px] ${isLow ? 'text-red-600 font-bold' : 'text-gray-400'}">Stok: ${p.SISA_STOK} ${isLow ? '(MENIPIS!)' : ''}</p>
+        `;
+        grid.appendChild(card);
+    });
+    updateStockDropdowns(data);
+}
+
+function updateStockDropdowns(data) {
+    const selects = ['stock-sku', 'opname-sku'];
+    selects.forEach(id => {
+        const el = document.getElementById(id);
+        if(!el) return;
+        el.innerHTML = '<option value="">Pilih Produk...</option>';
+        data.forEach(p => {
+            el.innerHTML += `<option value="${p.SKU}">${p.Nama_Produk} (Stok: ${p.SISA_STOK})</option>`;
+        });
+    });
+}
+
+async function processStockAction(type) {
+    const sku = document.getElementById(type === 'restock' ? 'stock-sku' : 'opname-sku').value;
+    const qty = document.getElementById(type === 'restock' ? 'stock-qty' : 'opname-qty').value;
+    const modal = type === 'restock' ? document.getElementById('stock-modal').value : null;
+    const alasan = document.getElementById(type === 'restock' ? 'stock-alasan' : 'opname-alasan').value;
+
+    if (!sku || !qty) return alert('Lengkapi data!');
+
+    try {
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: type, sku, qty, modalBaru: modal, alasan })
+        });
+        const res = await response.json();
+        if (res.status === 'success') {
+            alert('Data stok berhasil diperbarui!');
+            location.reload(); // Refresh data
+        }
+    } catch (e) { alert('Gagal memperbarui stok'); }
+}
+
+
 function showModal(html) {
     const m = document.getElementById('modal');
     document.getElementById('modal-content').innerHTML = html;
