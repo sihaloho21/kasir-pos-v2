@@ -132,7 +132,7 @@ function renderCategories(data) {
 
     categories.forEach(cat => {
         const btn = document.createElement('button');
-        btn.className = `px-3 py-1.5 rounded-lg text-[11px] font-semibold transition ${selectedCategory === cat ? 'bg-teal-600 text-white shadow-sm' : 'bg-white text-gray-600 border border-gray-200 hover:border-teal-300 hover:text-teal-600'}`;
+        btn.className = `px-3 py-1.5 rounded-lg text-[11px] font-semibold transition whitespace-nowrap min-w-[80px] ${selectedCategory === cat ? 'bg-teal-600 text-white shadow-sm' : 'bg-white text-gray-600 border border-gray-200 hover:border-teal-300 hover:text-teal-600'}`;
         btn.innerText = cat;
         btn.onclick = () => {
             selectedCategory = cat;
