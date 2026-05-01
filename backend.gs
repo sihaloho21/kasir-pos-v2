@@ -59,6 +59,10 @@ function doGet(e) {
   if (action === 'getDashboardStats') {
     return createResponse(getDashboardStats());
   }
+  
+  if (action === 'getDailyProfitStats') {
+    return createResponse(getDailyProfitStats());
+  }
 
   return createResponse({ status: 'error', message: 'Action not found' });
 }
@@ -241,6 +245,43 @@ function getDashboardStats() {
     weekly: { ...stats.weekly, top: getTopProduct(stats.weekly.items) },
     monthly: { ...stats.monthly, top: getTopProduct(stats.monthly.items) }
   };
+}
+
+function getDailyProfitStats() {
+  const sheetPenjualan = SS.getSheetByName(CONFIG.PENJUALAN.name);
+  const data = sheetPenjualan.getDataRange().getValues();
+  data.shift(); // Remove headers
+  
+  // Get modal map for profit calculation
+  const rekapData = SS.getSheetByName(CONFIG.REKAP.name).getDataRange().getValues();
+  rekapData.shift();
+  let modalMap = {};
+  rekapData.forEach(r => modalMap[r[0]] = r[3]);
+
+  let dailyStats = {};
+
+  data.forEach(row => {
+    const dateObj = new Date(row[1]);
+    const dateStr = Utilities.formatDate(dateObj, "GMT+7", "yyyy-MM-dd");
+    const sku = row[2];
+    const qty = Number(row[6]);
+    const total = Number(row[7]);
+    const modal = modalMap[sku] || 0;
+    const laba = total - (modal * qty);
+
+    if (!dailyStats[dateStr]) {
+      dailyStats[dateStr] = { omzet: 0, laba: 0 };
+    }
+    dailyStats[dateStr].omzet += total;
+    dailyStats[dateStr].laba += laba;
+  });
+
+  // Convert to array and sort by date descending
+  return Object.keys(dailyStats).map(date => ({
+    tanggal: date,
+    omzet: dailyStats[date].omzet,
+    laba: dailyStats[date].laba
+  })).sort((a, b) => b.tanggal.localeCompare(a.tanggal));
 }
 
 function createResponse(data) {

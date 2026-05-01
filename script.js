@@ -16,6 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     fetchProducts();
     fetchDashboard();
+    fetchDailyProfit();
     
     // Pastikan elemen ada sebelum menambah listener
     const searchInput = document.getElementById('search-input');
@@ -40,6 +41,11 @@ function showPage(pageId) {
     if (window.event && window.event.currentTarget) {
         window.event.currentTarget.classList.add('bg-teal-700');
     }
+
+    // Load daily profit if switching to report page
+    if (pageId === 'report') {
+        fetchDailyProfit();
+    }
 }
 
 // Fungsi Pengaturan
@@ -57,6 +63,7 @@ function saveSettings() {
     // Refresh data
     fetchProducts();
     fetchDashboard();
+    fetchDailyProfit();
     showPage('pos');
 }
 
@@ -92,6 +99,44 @@ async function fetchDashboard() {
     } catch (error) {
         console.error("Gagal memuat dashboard:", error);
     }
+}
+
+async function fetchDailyProfit() {
+    const tableBody = document.getElementById('daily-profit-table-body');
+    if (!tableBody) return;
+
+    try {
+        const response = await fetch(`${API_URL}?action=getDailyProfitStats`);
+        const data = await response.json();
+        
+        renderDailyProfitTable(data);
+    } catch (error) {
+        console.error("Gagal memuat laporan laba harian:", error);
+        tableBody.innerHTML = '<tr><td colspan="3" class="p-4 text-center text-red-500">Gagal memuat data. Periksa koneksi atau URL API.</td></tr>';
+    }
+}
+
+function renderDailyProfitTable(data) {
+    const tableBody = document.getElementById('daily-profit-table-body');
+    if (!tableBody) return;
+
+    if (!data || data.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="3" class="p-8 text-center text-gray-400 italic">Belum ada data transaksi.</td></tr>';
+        return;
+    }
+
+    tableBody.innerHTML = data.map(row => `
+        <tr class="hover:bg-gray-50 border-b border-gray-100 transition">
+            <td class="p-4 font-medium text-gray-600">${formatDate(row.tanggal)}</td>
+            <td class="p-4">${formatRupiah(row.omzet)}</td>
+            <td class="p-4 font-bold text-green-600">${formatRupiah(row.laba)}</td>
+        </tr>
+    `).join('');
+}
+
+function formatDate(dateStr) {
+    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    return new Date(dateStr).toLocaleDateString('id-ID', options);
 }
 
 function updateReportUI(stats) {
@@ -279,6 +324,7 @@ async function processPayment() {
             renderCart();
             fetchProducts();
             fetchDashboard();
+            fetchDailyProfit();
         } else {
             alert('Gagal: ' + (res.message || 'Terjadi kesalahan'));
         }

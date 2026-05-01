@@ -103,7 +103,36 @@
         <!-- Halaman LAPORAN (Sudah ada di versi sebelumnya) -->
         <div id="page-report" class="page flex-1 p-6 overflow-y-auto hidden">
             <h2 class="text-2xl font-bold mb-6">Laporan Penjualan</h2>
-            <div id="report-container" class="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
+            
+            <!-- Dashboard Ringkasan -->
+            <div id="report-container" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8"></div>
+
+            <!-- Tabel Laba Bersih Harian -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div class="p-4 border-b bg-gray-50 flex justify-between items-center">
+                    <h3 class="font-bold text-gray-700"><i class="fas fa-table mr-2 text-teal-600"></i>Laba Bersih Per Tanggal</h3>
+                    <button onclick="fetchDailyProfit()" class="text-teal-600 hover:text-teal-800 text-sm font-semibold">
+                        <i class="fas fa-sync-alt mr-1"></i> Refresh
+                    </button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-gray-100 text-gray-600 text-[11px] uppercase tracking-wider">
+                                <th class="p-4 border-b font-bold">Tanggal</th>
+                                <th class="p-4 border-b font-bold">Total Omzet</th>
+                                <th class="p-4 border-b font-bold text-green-600">Laba Bersih (Profit)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="daily-profit-table-body" class="text-sm text-gray-700">
+                            <!-- Data akan diisi via JavaScript -->
+                            <tr>
+                                <td colspan="3" class="p-8 text-center text-gray-400 italic">Memuat data...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
 
         <!-- Halaman PENGATURAN -->
