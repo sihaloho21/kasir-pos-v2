@@ -18,6 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchDashboard();
     fetchDailyProfit();
     fetchFishProfit();
+    fetchDigitalProfit();
     
     // Pastikan elemen ada sebelum menambah listener
     const searchInput = document.getElementById('search-input');
@@ -33,6 +34,12 @@ document.addEventListener('DOMContentLoaded', () => {
     ['fish-qty', 'fish-price', 'fish-cogs'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.addEventListener('input', updateFishPreview);
+    });
+
+    // Digital POS Listeners
+    ['digital-nominal', 'digital-price'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('input', updateDigitalPreview);
     });
 });
 
@@ -53,6 +60,7 @@ function showPage(pageId) {
     if (pageId === 'report') {
         fetchDailyProfit();
         fetchFishProfit();
+        fetchDigitalProfit();
     }
 }
 
@@ -73,7 +81,60 @@ function saveSettings() {
     fetchDashboard();
     fetchDailyProfit();
     fetchFishProfit();
+    fetchDigitalProfit();
     showPage('pos');
+}
+
+// --- DIGITAL POS LOGIC ---
+function updateDigitalPreview() {
+    const nominal = parseFloat(document.getElementById('digital-nominal').value) || 0;
+    const price = parseFloat(document.getElementById('digital-price').value) || 0;
+    const profit = price - nominal;
+    document.getElementById('preview-digital-profit').innerText = formatRupiah(profit);
+}
+
+async function processDigitalSale() {
+    const nominal = document.getElementById('digital-nominal').value;
+    const hargaJual = parseFloat(document.getElementById('digital-price').value);
+    const catatan = document.getElementById('digital-note').value;
+
+    if (isNaN(hargaJual)) {
+        return alert('Harga Jual wajib diisi!');
+    }
+
+    const btn = document.getElementById('btn-bayar-digital');
+    try {
+        btn.disabled = true;
+        btn.innerText = 'MENYIMPAN...';
+
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            body: JSON.stringify({
+                action: 'processDigitalSale',
+                nominal,
+                hargaJual,
+                catatan
+            })
+        });
+
+        const res = await response.json();
+        if (res.status === 'success') {
+            alert('Transaksi Digital Berhasil!');
+            document.getElementById('digital-nominal').value = '';
+            document.getElementById('digital-price').value = '';
+            document.getElementById('digital-note').value = '';
+            updateDigitalPreview();
+            fetchDashboard();
+        } else {
+            alert('Gagal: ' + res.message);
+        }
+    } catch (e) {
+        console.error(e);
+        alert('Terjadi kesalahan koneksi!');
+    } finally {
+        btn.disabled = false;
+        btn.innerText = 'SIMPAN TRANSAKSI DIGITAL';
+    }
 }
 
 // --- FISH POS LOGIC ---
@@ -81,10 +142,8 @@ function updateFishPreview() {
     const qty = parseFloat(document.getElementById('fish-qty').value) || 0;
     const price = parseFloat(document.getElementById('fish-price').value) || 0;
     const cogs = parseFloat(document.getElementById('fish-cogs').value) || 0;
-
     const total = qty * price;
     const profit = total - (qty * cogs);
-
     document.getElementById('preview-fish-total').innerText = formatRupiah(total);
     document.getElementById('preview-fish-profit').innerText = formatRupiah(profit);
 }
@@ -103,22 +162,13 @@ async function processFishSale() {
     try {
         btn.disabled = true;
         btn.innerText = 'MENYIMPAN...';
-
         const response = await fetch(API_URL, {
             method: 'POST',
-            body: JSON.stringify({
-                action: 'processFishSale',
-                jenisIkan,
-                qtyKg,
-                hargaJual,
-                cogsKg
-            })
+            body: JSON.stringify({ action: 'processFishSale', jenisIkan, qtyKg, hargaJual, cogsKg })
         });
-
         const res = await response.json();
         if (res.status === 'success') {
-            alert('Transaksi Ikan Berhasil Disimpan!');
-            // Reset fields
+            alert('Transaksi Ikan Berhasil!');
             document.getElementById('fish-qty').value = '';
             document.getElementById('fish-price').value = '';
             document.getElementById('fish-cogs').value = '';
@@ -128,7 +178,6 @@ async function processFishSale() {
             alert('Gagal: ' + res.message);
         }
     } catch (e) {
-        console.error(e);
         alert('Terjadi kesalahan koneksi!');
     } finally {
         btn.disabled = false;
@@ -141,47 +190,45 @@ async function processFishSale() {
 async function fetchDailyProfit() {
     const tableBody = document.getElementById('daily-profit-table-body');
     if (!tableBody) return;
-
     try {
         const response = await fetch(`${API_URL}?action=getDailyProfitStats`);
         const data = await response.json();
-        if (Array.isArray(data)) {
-            renderDailyProfitTable(data, 'daily-profit-table-body');
-        }
-    } catch (error) {
-        console.error("Gagal memuat laporan laba harian:", error);
-    }
+        if (Array.isArray(data)) renderDailyProfitTable(data, 'daily-profit-table-body');
+    } catch (error) { console.error(error); }
 }
 
 async function fetchFishProfit() {
     const tableBody = document.getElementById('fish-profit-table-body');
     if (!tableBody) return;
-
     try {
         const response = await fetch(`${API_URL}?action=getFishProfitStats`);
         const data = await response.json();
-        if (Array.isArray(data)) {
-            renderDailyProfitTable(data, 'fish-profit-table-body');
-        }
-    } catch (error) {
-        console.error("Gagal memuat laporan laba ikan:", error);
-    }
+        if (Array.isArray(data)) renderDailyProfitTable(data, 'fish-profit-table-body');
+    } catch (error) { console.error(error); }
+}
+
+async function fetchDigitalProfit() {
+    const tableBody = document.getElementById('digital-profit-table-body');
+    if (!tableBody) return;
+    try {
+        const response = await fetch(`${API_URL}?action=getDigitalProfitStats`);
+        const data = await response.json();
+        if (Array.isArray(data)) renderDailyProfitTable(data, 'digital-profit-table-body');
+    } catch (error) { console.error(error); }
 }
 
 function renderDailyProfitTable(data, targetId) {
     const tableBody = document.getElementById(targetId);
     if (!tableBody) return;
-
     if (!Array.isArray(data) || data.length === 0) {
         tableBody.innerHTML = '<tr><td colspan="3" class="p-4 text-center text-gray-400 italic">Belum ada data.</td></tr>';
         return;
     }
-
     tableBody.innerHTML = data.map(row => `
         <tr class="hover:bg-gray-50 border-b border-gray-100 transition">
-            <td class="p-3 font-medium text-gray-600">${formatDateShort(row.tanggal)}</td>
-            <td class="p-3">${formatRupiah(row.omzet)}</td>
-            <td class="p-3 font-bold ${row.laba >= 0 ? 'text-green-600' : 'text-red-600'}">${formatRupiah(row.laba)}</td>
+            <td class="p-2 font-medium text-gray-600">${formatDateShort(row.tanggal)}</td>
+            <td class="p-2">${formatRupiah(row.omzet)}</td>
+            <td class="p-2 font-bold ${row.laba >= 0 ? 'text-green-600' : 'text-red-600'}">${formatRupiah(row.laba)}</td>
         </tr>
     `).join('');
 }
@@ -199,39 +246,31 @@ async function fetchProducts() {
         products = await response.json();
         renderCategories(products);
         renderProducts(products);
-    } catch (error) {
-        console.error("Gagal memuat produk:", error);
-    }
+    } catch (error) { console.error(error); }
 }
 
 async function fetchDashboard() {
     try {
         const response = await fetch(`${API_URL}?action=getDashboardStats`);
         const stats = await response.json();
-        
         const omzetEl = document.getElementById('today-omzet');
         if (omzetEl && stats) {
             const omzetValue = stats.daily ? stats.daily.omzet : (stats.todayOmzet || 0);
             omzetEl.innerText = formatRupiah(omzetValue);
         }
-        
         if (stats) updateReportUI(stats);
-    } catch (error) {
-        console.error("Gagal memuat dashboard:", error);
-    }
+    } catch (error) { console.error(error); }
 }
 
 function updateReportUI(stats) {
     const container = document.getElementById('report-container');
     if (!container || !stats) return;
-
     const createCard = (title, data, color) => {
         if (!data) return '';
         const omzet = data.omzet || 0;
         const laba = data.laba || 0;
         const topNama = data.top ? data.top.nama : '-';
         const topQty = data.top ? data.top.qty : 0;
-        
         return `
             <div class="bg-${color}-50 p-4 rounded-xl border border-${color}-100">
                 <h4 class="text-xs font-bold text-${color}-600 uppercase">${title}</h4>
@@ -241,7 +280,6 @@ function updateReportUI(stats) {
             </div>
         `;
     };
-
     container.innerHTML = `
         ${createCard('Hari Ini', stats.daily, 'blue')}
         ${createCard('Minggu Ini', stats.weekly, 'purple')}
@@ -252,19 +290,13 @@ function updateReportUI(stats) {
 function renderCategories(data) {
     const container = document.getElementById('category-filter');
     if (!container || !data) return;
-
     const categories = ['Semua', ...new Set(data.map(p => p.Kategori).filter(k => k))];
     container.innerHTML = '';
-
     categories.forEach(cat => {
         const btn = document.createElement('button');
         btn.className = `px-3 py-1.5 rounded-lg text-[11px] font-semibold transition whitespace-nowrap min-w-[80px] ${selectedCategory === cat ? 'bg-teal-600 text-white shadow-sm' : 'bg-white text-gray-600 border border-gray-200 hover:border-teal-300 hover:text-teal-600'}`;
         btn.innerText = cat;
-        btn.onclick = () => {
-            selectedCategory = cat;
-            renderCategories(data);
-            filterProducts();
-        };
+        btn.onclick = () => { selectedCategory = cat; renderCategories(data); filterProducts(); };
         container.appendChild(btn);
     });
 }
@@ -273,22 +305,17 @@ function renderProducts(data) {
     const grid = document.getElementById('product-grid');
     if (!grid || !data) return;
     grid.innerHTML = '';
-    
     data.forEach(p => {
         const sisaStok = p.SISA_STOK || 0;
         const harga = p.Perkiraan_Harga_Rp || 0;
         const nama = p.Nama_Produk || 'Tanpa Nama';
         const isLow = sisaStok < 5;
         const initial = nama.substring(0, 2).toUpperCase();
-        
         const card = document.createElement('div');
         card.className = `product-card bg-white p-4 rounded-xl border ${isLow ? 'border-red-500 bg-red-50' : 'border-gray-100'} flex flex-col items-center text-center cursor-pointer hover:shadow-md transition`;
         card.onclick = () => addToCart(p);
-        
         card.innerHTML = `
-            <div class="w-10 h-10 ${isLow ? 'bg-red-500' : 'bg-teal-600'} text-white flex items-center justify-center rounded-lg font-bold mb-2">
-                ${initial}
-            </div>
+            <div class="w-10 h-10 ${isLow ? 'bg-red-500' : 'bg-teal-600'} text-white flex items-center justify-center rounded-lg font-bold mb-2">${initial}</div>
             <h3 class="text-xs font-medium text-gray-700 h-8 overflow-hidden">${nama}</h3>
             <p class="text-teal-600 font-bold text-sm">${formatRupiah(harga)}</p>
             <p class="text-[10px] ${isLow ? 'text-red-600 font-bold' : 'text-gray-400'}">Stok: ${sisaStok} ${isLow ? '!' : ''}</p>
@@ -320,7 +347,6 @@ function addToCart(product) {
     const harga = product.Perkiraan_Harga_Rp || 0;
     const nama = product.Nama_Produk || 'Tanpa Nama';
     const satuan = product.Satuan || '';
-
     if (existing) {
         existing.Qty += 1;
         existing.Total = existing.Qty * existing.Harga_Satuan;
@@ -365,12 +391,7 @@ function updateQty(index, delta) {
     renderCart();
 }
 
-function clearCart() {
-    if (confirm('Bersihkan keranjang?')) {
-        cart = [];
-        renderCart();
-    }
-}
+function clearCart() { if (confirm('Bersihkan keranjang?')) { cart = []; renderCart(); } }
 
 async function processPayment() {
     if (cart.length === 0) return alert('Keranjang kosong!');
@@ -387,15 +408,9 @@ async function processPayment() {
             renderCart();
             fetchProducts();
             fetchDashboard();
-        } else {
-            alert('Gagal: ' + res.message);
-        }
-    } catch (e) {
-        alert('Gagal memproses pembayaran!');
-    } finally {
-        btn.disabled = false;
-        btn.innerText = 'BAYAR';
-    }
+        } else { alert('Gagal: ' + res.message); }
+    } catch (e) { alert('Gagal memproses pembayaran!'); }
+    finally { btn.disabled = false; btn.innerText = 'BAYAR'; }
 }
 
 function filterProducts() {

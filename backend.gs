@@ -26,6 +26,10 @@ const CONFIG = {
   PENJUALAN_IKAN: {
     name: 'Penjualan_Ikan',
     headers: ['Tanggal Terjual', 'Jenis Ikan', 'Jumlah Terjual (kg)', 'Harga Jual per Kg', 'Total Harga Jual', 'COGS per Kg (Avg Beli)', 'Total COGS', 'Total Keuntungan']
+  },
+  PRODUK_DIGITAL: {
+    name: 'Produk_Digital',
+    headers: ['TANGGAL', 'NOMINAL', 'HARGA JUAL', 'KEUNTUNGAN', 'CATATAN']
   }
 };
 
@@ -71,6 +75,10 @@ function doGet(e) {
   if (action === 'getFishProfitStats') {
     return createResponse(getFishProfitStats());
   }
+  
+  if (action === 'getDigitalProfitStats') {
+    return createResponse(getDigitalProfitStats());
+  }
 
   return createResponse({ status: 'error', message: 'Action not found' });
 }
@@ -85,6 +93,9 @@ function doPost(e) {
     }
     if (data.action === 'processFishSale') {
       return createResponse(processFishSale(data));
+    }
+    if (data.action === 'processDigitalSale') {
+      return createResponse(processDigitalSale(data));
     }
     const result = processTransaction(data);
     return createResponse(result);
@@ -353,6 +364,63 @@ function getFishProfitStats() {
       const dateStr = Utilities.formatDate(dateObj, "GMT+7", "yyyy-MM-dd");
       const omzet = Number(row[4]) || 0;
       const untung = Number(row[7]) || 0;
+
+      if (!dailyStats[dateStr]) {
+        dailyStats[dateStr] = { omzet: 0, laba: 0 };
+      }
+      dailyStats[dateStr].omzet += omzet;
+      dailyStats[dateStr].laba += untung;
+    });
+
+    return Object.keys(dailyStats).map(date => ({
+      tanggal: date,
+      omzet: dailyStats[date].omzet,
+      laba: dailyStats[date].laba
+    })).sort((a, b) => b.tanggal.localeCompare(a.tanggal));
+  } catch (e) {
+    return [];
+  }
+}
+
+function processDigitalSale(payload) {
+  try {
+    const sheet = SS.getSheetByName(CONFIG.PRODUK_DIGITAL.name);
+    const timestamp = new Date();
+    const dateStr = Utilities.formatDate(timestamp, "GMT+7", "yyyy-MM-dd HH:mm:ss");
+    
+    const { nominal, hargaJual, catatan } = payload;
+    const keuntungan = Number(hargaJual) - (Number(nominal) || 0);
+
+    sheet.appendRow([
+      dateStr,
+      nominal || "",
+      hargaJual,
+      keuntungan,
+      catatan || ""
+    ]);
+
+    return { status: 'success' };
+  } catch (err) {
+    return { status: 'error', message: err.toString() };
+  }
+}
+
+function getDigitalProfitStats() {
+  try {
+    const sheet = SS.getSheetByName(CONFIG.PRODUK_DIGITAL.name);
+    if (!sheet) return [];
+    
+    const data = sheet.getDataRange().getValues();
+    if (data.length <= 1) return [];
+    data.shift();
+
+    let dailyStats = {};
+    data.forEach(row => {
+      if (!row[0]) return;
+      const dateObj = new Date(row[0]);
+      const dateStr = Utilities.formatDate(dateObj, "GMT+7", "yyyy-MM-dd");
+      const omzet = Number(row[2]) || 0;
+      const untung = Number(row[3]) || 0;
 
       if (!dailyStats[dateStr]) {
         dailyStats[dateStr] = { omzet: 0, laba: 0 };

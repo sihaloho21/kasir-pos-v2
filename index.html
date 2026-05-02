@@ -25,6 +25,10 @@
                 <i class="fas fa-fish w-8 text-center"></i>
                 <span class="hidden md:block ml-2">Kasir - Ikan</span>
             </button>
+            <button onclick="showPage('pos-digital')" class="nav-link w-full flex items-center p-4 hover:bg-teal-700 transition">
+                <i class="fas fa-mobile-alt w-8 text-center"></i>
+                <span class="hidden md:block ml-2">Produk Digital</span>
+            </button>
             <button onclick="showPage('stock')" class="nav-link w-full flex items-center p-4 hover:bg-teal-700 transition">
                 <i class="fas fa-boxes w-8 text-center"></i>
                 <span class="hidden md:block ml-2">Kelola Stok</span>
@@ -123,6 +127,35 @@
             </div>
         </div>
 
+        <!-- Halaman PRODUK DIGITAL -->
+        <div id="page-pos-digital" class="page flex-1 p-6 overflow-y-auto hidden">
+            <h2 class="text-2xl font-bold mb-6">Kasir Produk Digital</h2>
+            <div class="max-w-2xl bg-white p-8 rounded-2xl shadow-lg border border-gray-100">
+                <div class="space-y-6">
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">Nominal (Opsional)</label>
+                        <input type="number" id="digital-nominal" placeholder="Rp (Modal/Nominal)" class="w-full p-3 border-2 rounded-xl focus:border-teal-500 outline-none transition">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">Harga Jual (Wajib)</label>
+                        <input type="number" id="digital-price" placeholder="Rp" class="w-full p-3 border-2 rounded-xl focus:border-teal-500 outline-none transition">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">Catatan (Opsional)</label>
+                        <input type="text" id="digital-note" placeholder="Contoh: Pulsa 50rb / Token Listrik" class="w-full p-3 border-2 rounded-xl focus:border-teal-500 outline-none transition">
+                    </div>
+                    
+                    <!-- Live Calculation Preview -->
+                    <div class="bg-blue-50 p-4 rounded-xl border border-blue-100">
+                        <p class="text-[10px] uppercase text-blue-600 font-bold">Estimasi Keuntungan</p>
+                        <p id="preview-digital-profit" class="text-xl font-black text-blue-800">Rp 0</p>
+                    </div>
+
+                    <button onclick="processDigitalSale()" id="btn-bayar-digital" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold shadow-xl hover:bg-blue-700 transform active:scale-95 transition">SIMPAN TRANSAKSI DIGITAL</button>
+                </div>
+            </div>
+        </div>
+
         <!-- Halaman KELOLA STOK -->
         <div id="page-stock" class="page flex-1 p-6 overflow-y-auto hidden">
             <h2 class="text-2xl font-bold mb-6">Manajemen Stok</h2>
@@ -158,25 +191,25 @@
             <!-- Dashboard Ringkasan -->
             <div id="report-container" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8"></div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <!-- Tabel Laba Bersih Harian (Produk Warung) -->
                 <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                     <div class="p-4 border-b bg-teal-50 flex justify-between items-center">
-                        <h3 class="font-bold text-teal-800"><i class="fas fa-store mr-2"></i>Laba Produk Warung</h3>
-                        <button onclick="fetchDailyProfit()" class="text-teal-600 hover:text-teal-800 text-xs font-semibold">
-                            <i class="fas fa-sync-alt mr-1"></i>
+                        <h3 class="font-bold text-teal-800 text-xs"><i class="fas fa-store mr-2"></i>Warung</h3>
+                        <button onclick="fetchDailyProfit()" class="text-teal-600 hover:text-teal-800 text-[10px] font-semibold">
+                            <i class="fas fa-sync-alt"></i>
                         </button>
                     </div>
                     <div class="overflow-x-auto">
                         <table class="w-full text-left border-collapse">
                             <thead>
-                                <tr class="bg-gray-50 text-gray-500 text-[10px] uppercase tracking-wider">
-                                    <th class="p-3 border-b">Tanggal</th>
-                                    <th class="p-3 border-b">Omzet</th>
-                                    <th class="p-3 border-b text-teal-600">Laba</th>
+                                <tr class="bg-gray-50 text-gray-500 text-[9px] uppercase tracking-wider">
+                                    <th class="p-2 border-b">Tanggal</th>
+                                    <th class="p-2 border-b">Omzet</th>
+                                    <th class="p-2 border-b text-teal-600">Laba</th>
                                 </tr>
                             </thead>
-                            <tbody id="daily-profit-table-body" class="text-xs text-gray-700">
+                            <tbody id="daily-profit-table-body" class="text-[10px] text-gray-700">
                                 <tr><td colspan="3" class="p-4 text-center text-gray-400">Memuat...</td></tr>
                             </tbody>
                         </table>
@@ -186,21 +219,45 @@
                 <!-- Tabel Laba Bersih Harian (Ikan) -->
                 <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                     <div class="p-4 border-b bg-blue-50 flex justify-between items-center">
-                        <h3 class="font-bold text-blue-800"><i class="fas fa-fish mr-2"></i>Laba Penjualan Ikan</h3>
-                        <button onclick="fetchFishProfit()" class="text-blue-600 hover:text-blue-800 text-xs font-semibold">
-                            <i class="fas fa-sync-alt mr-1"></i>
+                        <h3 class="font-bold text-blue-800 text-xs"><i class="fas fa-fish mr-2"></i>Ikan</h3>
+                        <button onclick="fetchFishProfit()" class="text-blue-600 hover:text-blue-800 text-[10px] font-semibold">
+                            <i class="fas fa-sync-alt"></i>
                         </button>
                     </div>
                     <div class="overflow-x-auto">
                         <table class="w-full text-left border-collapse">
                             <thead>
-                                <tr class="bg-gray-50 text-gray-500 text-[10px] uppercase tracking-wider">
-                                    <th class="p-3 border-b">Tanggal</th>
-                                    <th class="p-3 border-b">Omzet</th>
-                                    <th class="p-3 border-b text-blue-600">Laba</th>
+                                <tr class="bg-gray-50 text-gray-500 text-[9px] uppercase tracking-wider">
+                                    <th class="p-2 border-b">Tanggal</th>
+                                    <th class="p-2 border-b">Omzet</th>
+                                    <th class="p-2 border-b text-blue-600">Laba</th>
                                 </tr>
                             </thead>
-                            <tbody id="fish-profit-table-body" class="text-xs text-gray-700">
+                            <tbody id="fish-profit-table-body" class="text-[10px] text-gray-700">
+                                <tr><td colspan="3" class="p-4 text-center text-gray-400">Memuat...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Tabel Laba Bersih Harian (Digital) -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div class="p-4 border-b bg-purple-50 flex justify-between items-center">
+                        <h3 class="font-bold text-purple-800 text-xs"><i class="fas fa-mobile-alt mr-2"></i>Digital</h3>
+                        <button onclick="fetchDigitalProfit()" class="text-purple-600 hover:text-purple-800 text-[10px] font-semibold">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-gray-50 text-gray-500 text-[9px] uppercase tracking-wider">
+                                    <th class="p-2 border-b">Tanggal</th>
+                                    <th class="p-2 border-b">Omzet</th>
+                                    <th class="p-2 border-b text-purple-600">Laba</th>
+                                </tr>
+                            </thead>
+                            <tbody id="digital-profit-table-body" class="text-[10px] text-gray-700">
                                 <tr><td colspan="3" class="p-4 text-center text-gray-400">Memuat...</td></tr>
                             </tbody>
                         </table>
