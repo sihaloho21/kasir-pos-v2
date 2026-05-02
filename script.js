@@ -253,11 +253,24 @@ async function fetchDashboard() {
     try {
         const response = await fetch(`${API_URL}?action=getDashboardStats`);
         const stats = await response.json();
+        
+        // Update POS Dashboard Mini
         const omzetEl = document.getElementById('today-omzet');
         if (omzetEl && stats) {
             const omzetValue = stats.daily ? stats.daily.omzet : (stats.todayOmzet || 0);
             omzetEl.innerText = formatRupiah(omzetValue);
         }
+
+        if (stats.segments) {
+            const sWarung = document.getElementById('summary-laba-warung');
+            const sFish = document.getElementById('summary-laba-fish');
+            const sDigital = document.getElementById('summary-laba-digital');
+            
+            if (sWarung) sWarung.innerText = formatRupiah(stats.segments.warung.laba);
+            if (sFish) sFish.innerText = formatRupiah(stats.segments.fish.laba);
+            if (sDigital) sDigital.innerText = formatRupiah(stats.segments.digital.laba);
+        }
+
         if (stats) updateReportUI(stats);
     } catch (error) { console.error(error); }
 }

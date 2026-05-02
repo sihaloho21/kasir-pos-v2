@@ -262,10 +262,23 @@ function getDashboardStats() {
     return top;
   };
 
+  // Get Fish Stats for Today
+  const fishStats = getFishProfitStats();
+  const fishToday = fishStats.find(s => s.tanggal === todayStr) || { omzet: 0, laba: 0 };
+  
+  // Get Digital Stats for Today
+  const digitalStats = getDigitalProfitStats();
+  const digitalToday = digitalStats.find(s => s.tanggal === todayStr) || { omzet: 0, laba: 0 };
+
   return {
     daily: { ...stats.daily, top: getTopProduct(stats.daily.items) },
     weekly: { ...stats.weekly, top: getTopProduct(stats.weekly.items) },
-    monthly: { ...stats.monthly, top: getTopProduct(stats.monthly.items) }
+    monthly: { ...stats.monthly, top: getTopProduct(stats.monthly.items) },
+    segments: {
+      warung: { laba: stats.daily.laba },
+      fish: { laba: fishToday.laba },
+      digital: { laba: digitalToday.laba }
+    }
   };
 }
 
