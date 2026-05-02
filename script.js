@@ -269,6 +269,15 @@ async function fetchDashboard() {
             if (sWarung) sWarung.innerText = formatRupiah(stats.segments.warung.laba);
             if (sFish) sFish.innerText = formatRupiah(stats.segments.fish.laba);
             if (sDigital) sDigital.innerText = formatRupiah(stats.segments.digital.laba);
+
+            // Update Total Laba (Warung + Fish + Digital)
+            const sTotal = document.getElementById('summary-total-laba');
+            if (sTotal) {
+                const totalLaba = (stats.segments.warung.laba || 0) + 
+                                  (stats.segments.fish.laba || 0) + 
+                                  (stats.segments.digital.laba || 0);
+                sTotal.innerText = formatRupiah(totalLaba);
+            }
         }
 
         if (stats) updateReportUI(stats);
