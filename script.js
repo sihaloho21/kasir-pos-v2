@@ -17,6 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchProducts();
     fetchDashboard();
     fetchDailyProfit();
+    fetchFishProfit();
     
     // Pastikan elemen ada sebelum menambah listener
     const searchInput = document.getElementById('search-input');
@@ -27,6 +28,12 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const btnBayar = document.getElementById('btn-bayar');
     if (btnBayar) btnBayar.addEventListener('click', processPayment);
+
+    // Fish POS Listeners
+    ['fish-qty', 'fish-price', 'fish-cogs'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('input', updateFishPreview);
+    });
 });
 
 // Fungsi Navigasi Halaman
@@ -42,9 +49,10 @@ function showPage(pageId) {
         window.event.currentTarget.classList.add('bg-teal-700');
     }
 
-    // Load daily profit if switching to report page
+    // Load reports if switching to report page
     if (pageId === 'report') {
         fetchDailyProfit();
+        fetchFishProfit();
     }
 }
 
@@ -64,10 +72,127 @@ function saveSettings() {
     fetchProducts();
     fetchDashboard();
     fetchDailyProfit();
+    fetchFishProfit();
     showPage('pos');
 }
 
-// Ambil Data Produk
+// --- FISH POS LOGIC ---
+function updateFishPreview() {
+    const qty = parseFloat(document.getElementById('fish-qty').value) || 0;
+    const price = parseFloat(document.getElementById('fish-price').value) || 0;
+    const cogs = parseFloat(document.getElementById('fish-cogs').value) || 0;
+
+    const total = qty * price;
+    const profit = total - (qty * cogs);
+
+    document.getElementById('preview-fish-total').innerText = formatRupiah(total);
+    document.getElementById('preview-fish-profit').innerText = formatRupiah(profit);
+}
+
+async function processFishSale() {
+    const jenisIkan = document.getElementById('fish-type').value;
+    const qtyKg = parseFloat(document.getElementById('fish-qty').value);
+    const hargaJual = parseFloat(document.getElementById('fish-price').value);
+    const cogsKg = parseFloat(document.getElementById('fish-cogs').value);
+
+    if (!jenisIkan || isNaN(qtyKg) || isNaN(hargaJual) || isNaN(cogsKg)) {
+        return alert('Harap isi semua data dengan benar!');
+    }
+
+    const btn = document.getElementById('btn-bayar-ikan');
+    try {
+        btn.disabled = true;
+        btn.innerText = 'MENYIMPAN...';
+
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            body: JSON.stringify({
+                action: 'processFishSale',
+                jenisIkan,
+                qtyKg,
+                hargaJual,
+                cogsKg
+            })
+        });
+
+        const res = await response.json();
+        if (res.status === 'success') {
+            alert('Transaksi Ikan Berhasil Disimpan!');
+            // Reset fields
+            document.getElementById('fish-qty').value = '';
+            document.getElementById('fish-price').value = '';
+            document.getElementById('fish-cogs').value = '';
+            updateFishPreview();
+            fetchDashboard();
+        } else {
+            alert('Gagal: ' + res.message);
+        }
+    } catch (e) {
+        console.error(e);
+        alert('Terjadi kesalahan koneksi!');
+    } finally {
+        btn.disabled = false;
+        btn.innerText = 'SIMPAN TRANSAKSI IKAN';
+    }
+}
+
+// --- REPORTING LOGIC ---
+
+async function fetchDailyProfit() {
+    const tableBody = document.getElementById('daily-profit-table-body');
+    if (!tableBody) return;
+
+    try {
+        const response = await fetch(`${API_URL}?action=getDailyProfitStats`);
+        const data = await response.json();
+        if (Array.isArray(data)) {
+            renderDailyProfitTable(data, 'daily-profit-table-body');
+        }
+    } catch (error) {
+        console.error("Gagal memuat laporan laba harian:", error);
+    }
+}
+
+async function fetchFishProfit() {
+    const tableBody = document.getElementById('fish-profit-table-body');
+    if (!tableBody) return;
+
+    try {
+        const response = await fetch(`${API_URL}?action=getFishProfitStats`);
+        const data = await response.json();
+        if (Array.isArray(data)) {
+            renderDailyProfitTable(data, 'fish-profit-table-body');
+        }
+    } catch (error) {
+        console.error("Gagal memuat laporan laba ikan:", error);
+    }
+}
+
+function renderDailyProfitTable(data, targetId) {
+    const tableBody = document.getElementById(targetId);
+    if (!tableBody) return;
+
+    if (!Array.isArray(data) || data.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="3" class="p-4 text-center text-gray-400 italic">Belum ada data.</td></tr>';
+        return;
+    }
+
+    tableBody.innerHTML = data.map(row => `
+        <tr class="hover:bg-gray-50 border-b border-gray-100 transition">
+            <td class="p-3 font-medium text-gray-600">${formatDateShort(row.tanggal)}</td>
+            <td class="p-3">${formatRupiah(row.omzet)}</td>
+            <td class="p-3 font-bold ${row.laba >= 0 ? 'text-green-600' : 'text-red-600'}">${formatRupiah(row.laba)}</td>
+        </tr>
+    `).join('');
+}
+
+function formatDateShort(dateStr) {
+    const options = { year: 'numeric', month: 'short', day: 'numeric' };
+    return new Date(dateStr).toLocaleDateString('id-ID', options);
+}
+
+// --- CORE POS LOGIC ---
+
 async function fetchProducts() {
     try {
         const response = await fetch(`${API_URL}?action=getProducts`);
@@ -76,14 +201,9 @@ async function fetchProducts() {
         renderProducts(products);
     } catch (error) {
         console.error("Gagal memuat produk:", error);
-        if (products && products.length > 0) {
-            renderCategories(products);
-            renderProducts(products);
-        }
     }
 }
 
-// Ambil Stats Dashboard
 async function fetchDashboard() {
     try {
         const response = await fetch(`${API_URL}?action=getDashboardStats`);
@@ -101,50 +221,6 @@ async function fetchDashboard() {
     }
 }
 
-async function fetchDailyProfit() {
-    const tableBody = document.getElementById('daily-profit-table-body');
-    if (!tableBody) return;
-
-    try {
-        const response = await fetch(`${API_URL}?action=getDailyProfitStats`);
-        const data = await response.json();
-        
-        // Ensure data is an array before rendering
-        if (Array.isArray(data)) {
-            renderDailyProfitTable(data);
-        } else {
-            console.error("API returned non-array data:", data);
-            tableBody.innerHTML = '<tr><td colspan="3" class="p-8 text-center text-orange-500 italic">Format data tidak valid. Pastikan Backend sudah diperbarui.</td></tr>';
-        }
-    } catch (error) {
-        console.error("Gagal memuat laporan laba harian:", error);
-        tableBody.innerHTML = '<tr><td colspan="3" class="p-4 text-center text-red-500">Gagal memuat data. Periksa koneksi atau URL API.</td></tr>';
-    }
-}
-
-function renderDailyProfitTable(data) {
-    const tableBody = document.getElementById('daily-profit-table-body');
-    if (!tableBody) return;
-
-    if (!Array.isArray(data) || data.length === 0) {
-        tableBody.innerHTML = '<tr><td colspan="3" class="p-8 text-center text-gray-400 italic">Belum ada data transaksi.</td></tr>';
-        return;
-    }
-
-    tableBody.innerHTML = data.map(row => `
-        <tr class="hover:bg-gray-50 border-b border-gray-100 transition">
-            <td class="p-4 font-medium text-gray-600">${formatDate(row.tanggal)}</td>
-            <td class="p-4">${formatRupiah(row.omzet)}</td>
-            <td class="p-4 font-bold text-green-600">${formatRupiah(row.laba)}</td>
-        </tr>
-    `).join('');
-}
-
-function formatDate(dateStr) {
-    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-    return new Date(dateStr).toLocaleDateString('id-ID', options);
-}
-
 function updateReportUI(stats) {
     const container = document.getElementById('report-container');
     if (!container || !stats) return;
@@ -160,7 +236,7 @@ function updateReportUI(stats) {
             <div class="bg-${color}-50 p-4 rounded-xl border border-${color}-100">
                 <h4 class="text-xs font-bold text-${color}-600 uppercase">${title}</h4>
                 <p class="text-xl font-black text-${color}-800">${formatRupiah(omzet)}</p>
-                <p class="text-xs text-${color}-500">Laba: ${formatRupiah(laba)}</p>
+                <p class="text-xs text-${color}-500 font-bold">Laba Bersih: ${formatRupiah(laba)}</p>
                 <p class="text-[10px] text-gray-500 mt-2 italic">Terlaris: ${topNama} (${topQty})</p>
             </div>
         `;
@@ -173,7 +249,6 @@ function updateReportUI(stats) {
     `;
 }
 
-// Render Kategori
 function renderCategories(data) {
     const container = document.getElementById('category-filter');
     if (!container || !data) return;
@@ -194,7 +269,6 @@ function renderCategories(data) {
     });
 }
 
-// Tampilkan Produk ke Grid
 function renderProducts(data) {
     const grid = document.getElementById('product-grid');
     if (!grid || !data) return;
@@ -204,7 +278,6 @@ function renderProducts(data) {
         const sisaStok = p.SISA_STOK || 0;
         const harga = p.Perkiraan_Harga_Rp || 0;
         const nama = p.Nama_Produk || 'Tanpa Nama';
-        
         const isLow = sisaStok < 5;
         const initial = nama.substring(0, 2).toUpperCase();
         
@@ -241,10 +314,8 @@ function updateStockDropdowns(data) {
     });
 }
 
-// Tambah ke Keranjang
 function addToCart(product) {
     if (!product || !product.SKU) return;
-    
     const existing = cart.find(item => item.SKU === product.SKU);
     const harga = product.Perkiraan_Harga_Rp || 0;
     const nama = product.Nama_Produk || 'Tanpa Nama';
@@ -254,14 +325,7 @@ function addToCart(product) {
         existing.Qty += 1;
         existing.Total = existing.Qty * existing.Harga_Satuan;
     } else {
-        cart.push({
-            SKU: product.SKU,
-            Nama_Produk: nama,
-            Satuan: satuan,
-            Harga_Satuan: harga,
-            Qty: 1,
-            Total: harga
-        });
+        cart.push({ SKU: product.SKU, Nama_Produk: nama, Satuan: satuan, Harga_Satuan: harga, Qty: 1, Total: harga });
     }
     renderCart();
 }
@@ -270,10 +334,8 @@ function renderCart() {
     const container = document.getElementById('cart-items');
     const totalEl = document.getElementById('cart-total');
     if (!container || !totalEl) return;
-    
     container.innerHTML = '';
     let total = 0;
-    
     cart.forEach((item, index) => {
         total += item.Total;
         const div = document.createElement('div');
@@ -291,7 +353,6 @@ function renderCart() {
         `;
         container.appendChild(div);
     });
-    
     if (cart.length === 0) container.innerHTML = '<p class="text-center text-gray-400 text-xs mt-10">Kosong</p>';
     totalEl.innerText = formatRupiah(total);
 }
@@ -315,85 +376,38 @@ async function processPayment() {
     if (cart.length === 0) return alert('Keranjang kosong!');
     const btn = document.getElementById('btn-bayar');
     if (!btn) return;
-    
     try {
         btn.disabled = true;
         btn.innerText = 'PROSES...';
-        const response = await fetch(API_URL, {
-            method: 'POST',
-            body: JSON.stringify({ items: cart })
-        });
+        const response = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ items: cart }) });
         const res = await response.json();
         if (res.status === 'success') {
-            alert('Transaksi Berhasil! ID: ' + res.trxId);
+            alert('Transaksi Berhasil!');
             cart = [];
             renderCart();
             fetchProducts();
             fetchDashboard();
-            fetchDailyProfit();
         } else {
-            alert('Gagal: ' + (res.message || 'Terjadi kesalahan'));
+            alert('Gagal: ' + res.message);
         }
-    } catch (e) { 
-        console.error(e);
-        alert('Gagal memproses pembayaran!'); 
-    }
-    finally { 
-        btn.disabled = false; 
-        btn.innerText = 'BAYAR'; 
-    }
-}
-
-async function processStockAction(type) {
-    const skuEl = document.getElementById(type === 'restock' ? 'stock-sku' : 'opname-sku');
-    const qtyEl = document.getElementById(type === 'restock' ? 'stock-qty' : 'opname-qty');
-    const modalEl = type === 'restock' ? document.getElementById('stock-modal') : null;
-    const alasanEl = document.getElementById(type === 'restock' ? 'stock-alasan' : 'opname-alasan');
-
-    if (!skuEl || !qtyEl) return;
-
-    const sku = skuEl.value;
-    const qty = qtyEl.value;
-    const modal = modalEl ? modalEl.value : null;
-    const alasan = alasanEl ? alasanEl.value : '';
-
-    if (!sku || !qty) return alert('Lengkapi data!');
-
-    try {
-        const response = await fetch(API_URL, {
-            method: 'POST',
-            body: JSON.stringify({ action: type, sku, qty, modalBaru: modal, alasan })
-        });
-        const res = await response.json();
-        if (res.status === 'success') {
-            alert('Stok berhasil diperbarui!');
-            fetchProducts(); // Refresh data tanpa reload halaman
-            // Clear inputs
-            qtyEl.value = '';
-            if (modalEl) modalEl.value = '';
-            if (alasanEl) alasanEl.value = '';
-        } else {
-            alert('Gagal: ' + (res.message || 'Terjadi kesalahan'));
-        }
-    } catch (e) { 
-        console.error(e);
-        alert('Gagal memperbarui stok!'); 
+    } catch (e) {
+        alert('Gagal memproses pembayaran!');
+    } finally {
+        btn.disabled = false;
+        btn.innerText = 'BAYAR';
     }
 }
 
 function filterProducts() {
     const searchInput = document.getElementById('search-input');
     if (!searchInput) return;
-    
     const search = searchInput.value.toLowerCase();
     const filtered = products.filter(p => {
         const nama = (p.Nama_Produk || '').toLowerCase();
         const sku = (p.SKU || '').toString().toLowerCase();
         const kategori = p.Kategori || '';
-        
         const matchesSearch = nama.includes(search) || sku.includes(search);
         const matchesCategory = selectedCategory === 'Semua' || kategori === selectedCategory;
-        
         return matchesSearch && matchesCategory;
     });
     renderProducts(filtered);

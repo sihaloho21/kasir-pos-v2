@@ -21,6 +21,10 @@
                 <i class="fas fa-shopping-cart w-8 text-center"></i>
                 <span class="hidden md:block ml-2">Kasir / POS</span>
             </button>
+            <button onclick="showPage('pos-ikan')" class="nav-link w-full flex items-center p-4 hover:bg-teal-700 transition">
+                <i class="fas fa-fish w-8 text-center"></i>
+                <span class="hidden md:block ml-2">Kasir - Ikan</span>
+            </button>
             <button onclick="showPage('stock')" class="nav-link w-full flex items-center p-4 hover:bg-teal-700 transition">
                 <i class="fas fa-boxes w-8 text-center"></i>
                 <span class="hidden md:block ml-2">Kelola Stok</span>
@@ -72,6 +76,53 @@
             </aside>
         </div>
 
+        <!-- Halaman KASIR IKAN -->
+        <div id="page-pos-ikan" class="page flex-1 p-6 overflow-y-auto hidden">
+            <h2 class="text-2xl font-bold mb-6">Kasir Khusus Ikan</h2>
+            <div class="max-w-2xl bg-white p-8 rounded-2xl shadow-lg border border-gray-100">
+                <div class="space-y-6">
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">Jenis Ikan</label>
+                        <select id="fish-type" class="w-full p-3 border-2 rounded-xl focus:border-teal-500 outline-none transition">
+                            <option value="MAS">MAS</option>
+                            <option value="NILA">NILA</option>
+                            <option value="LELE">LELE</option>
+                            <option value="GURAME">GURAME</option>
+                            <option value="PATIN">PATIN</option>
+                        </select>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-2">Jumlah (kg)</label>
+                            <input type="number" step="0.001" id="fish-qty" placeholder="0.000" class="w-full p-3 border-2 rounded-xl focus:border-teal-500 outline-none transition">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-2">Harga Jual / kg</label>
+                            <input type="number" id="fish-price" placeholder="Rp" class="w-full p-3 border-2 rounded-xl focus:border-teal-500 outline-none transition">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">COGS (Harga Beli) / kg</label>
+                        <input type="number" id="fish-cogs" placeholder="Rp" class="w-full p-3 border-2 rounded-xl focus:border-teal-500 outline-none transition">
+                    </div>
+                    
+                    <!-- Live Calculation Preview -->
+                    <div class="bg-teal-50 p-4 rounded-xl border border-teal-100 grid grid-cols-2 gap-4">
+                        <div>
+                            <p class="text-[10px] uppercase text-teal-600 font-bold">Total Harga Jual</p>
+                            <p id="preview-fish-total" class="text-lg font-black text-teal-800">Rp 0</p>
+                        </div>
+                        <div>
+                            <p class="text-[10px] uppercase text-orange-600 font-bold">Estimasi Untung</p>
+                            <p id="preview-fish-profit" class="text-lg font-black text-orange-800">Rp 0</p>
+                        </div>
+                    </div>
+
+                    <button onclick="processFishSale()" id="btn-bayar-ikan" class="w-full bg-teal-600 text-white py-4 rounded-2xl font-bold shadow-xl hover:bg-teal-700 transform active:scale-95 transition">SIMPAN TRANSAKSI IKAN</button>
+                </div>
+            </div>
+        </div>
+
         <!-- Halaman KELOLA STOK -->
         <div id="page-stock" class="page flex-1 p-6 overflow-y-auto hidden">
             <h2 class="text-2xl font-bold mb-6">Manajemen Stok</h2>
@@ -107,30 +158,53 @@
             <!-- Dashboard Ringkasan -->
             <div id="report-container" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8"></div>
 
-            <!-- Tabel Laba Bersih Harian -->
-            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                <div class="p-4 border-b bg-gray-50 flex justify-between items-center">
-                    <h3 class="font-bold text-gray-700"><i class="fas fa-table mr-2 text-teal-600"></i>Laba Bersih Per Tanggal</h3>
-                    <button onclick="fetchDailyProfit()" class="text-teal-600 hover:text-teal-800 text-sm font-semibold">
-                        <i class="fas fa-sync-alt mr-1"></i> Refresh
-                    </button>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- Tabel Laba Bersih Harian (Produk Warung) -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div class="p-4 border-b bg-teal-50 flex justify-between items-center">
+                        <h3 class="font-bold text-teal-800"><i class="fas fa-store mr-2"></i>Laba Produk Warung</h3>
+                        <button onclick="fetchDailyProfit()" class="text-teal-600 hover:text-teal-800 text-xs font-semibold">
+                            <i class="fas fa-sync-alt mr-1"></i>
+                        </button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-gray-50 text-gray-500 text-[10px] uppercase tracking-wider">
+                                    <th class="p-3 border-b">Tanggal</th>
+                                    <th class="p-3 border-b">Omzet</th>
+                                    <th class="p-3 border-b text-teal-600">Laba</th>
+                                </tr>
+                            </thead>
+                            <tbody id="daily-profit-table-body" class="text-xs text-gray-700">
+                                <tr><td colspan="3" class="p-4 text-center text-gray-400">Memuat...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left border-collapse">
-                        <thead>
-                            <tr class="bg-gray-100 text-gray-600 text-[11px] uppercase tracking-wider">
-                                <th class="p-4 border-b font-bold">Tanggal</th>
-                                <th class="p-4 border-b font-bold">Total Omzet</th>
-                                <th class="p-4 border-b font-bold text-green-600">Laba Bersih (Profit)</th>
-                            </tr>
-                        </thead>
-                        <tbody id="daily-profit-table-body" class="text-sm text-gray-700">
-                            <!-- Data akan diisi via JavaScript -->
-                            <tr>
-                                <td colspan="3" class="p-8 text-center text-gray-400 italic">Memuat data...</td>
-                            </tr>
-                        </tbody>
-                    </table>
+
+                <!-- Tabel Laba Bersih Harian (Ikan) -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div class="p-4 border-b bg-blue-50 flex justify-between items-center">
+                        <h3 class="font-bold text-blue-800"><i class="fas fa-fish mr-2"></i>Laba Penjualan Ikan</h3>
+                        <button onclick="fetchFishProfit()" class="text-blue-600 hover:text-blue-800 text-xs font-semibold">
+                            <i class="fas fa-sync-alt mr-1"></i>
+                        </button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-gray-50 text-gray-500 text-[10px] uppercase tracking-wider">
+                                    <th class="p-3 border-b">Tanggal</th>
+                                    <th class="p-3 border-b">Omzet</th>
+                                    <th class="p-3 border-b text-blue-600">Laba</th>
+                                </tr>
+                            </thead>
+                            <tbody id="fish-profit-table-body" class="text-xs text-gray-700">
+                                <tr><td colspan="3" class="p-4 text-center text-gray-400">Memuat...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>

@@ -22,6 +22,10 @@ const CONFIG = {
   LOG_STOK: {
     name: 'Log_Stok',
     headers: ['Tanggal', 'SKU', 'Nama Produk', 'Tipe', 'Jumlah', 'Alasan', 'Stok Akhir']
+  },
+  PENJUALAN_IKAN: {
+    name: 'Penjualan_Ikan',
+    headers: ['Tanggal Terjual', 'Jenis Ikan', 'Jumlah Terjual (kg)', 'Harga Jual per Kg', 'Total Harga Jual', 'COGS per Kg (Avg Beli)', 'Total COGS', 'Total Keuntungan']
   }
 };
 
@@ -63,6 +67,10 @@ function doGet(e) {
   if (action === 'getDailyProfitStats') {
     return createResponse(getDailyProfitStats());
   }
+  
+  if (action === 'getFishProfitStats') {
+    return createResponse(getFishProfitStats());
+  }
 
   return createResponse({ status: 'error', message: 'Action not found' });
 }
@@ -74,6 +82,9 @@ function doPost(e) {
     const data = JSON.parse(e.postData.contents);
     if (data.action === 'restock' || data.action === 'opname') {
       return createResponse(handleStockAction(data));
+    }
+    if (data.action === 'processFishSale') {
+      return createResponse(processFishSale(data));
     }
     const result = processTransaction(data);
     return createResponse(result);
@@ -294,6 +305,68 @@ function getDailyProfitStats() {
     })).sort((a, b) => b.tanggal.localeCompare(a.tanggal));
   } catch (e) {
     Logger.log("Error in getDailyProfitStats: " + e.toString());
+    return [];
+  }
+}
+
+function processFishSale(payload) {
+  try {
+    const sheet = SS.getSheetByName(CONFIG.PENJUALAN_IKAN.name);
+    const timestamp = new Date();
+    const dateStr = Utilities.formatDate(timestamp, "GMT+7", "yyyy-MM-dd HH:mm:ss");
+    
+    const { jenisIkan, qtyKg, hargaJual, cogsKg } = payload;
+    const totalHarga = qtyKg * hargaJual;
+    const totalCogs = qtyKg * cogsKg;
+    const untung = totalHarga - totalCogs;
+
+    sheet.appendRow([
+      dateStr,
+      jenisIkan,
+      qtyKg,
+      hargaJual,
+      totalHarga,
+      cogsKg,
+      totalCogs,
+      untung
+    ]);
+
+    return { status: 'success' };
+  } catch (err) {
+    return { status: 'error', message: err.toString() };
+  }
+}
+
+function getFishProfitStats() {
+  try {
+    const sheet = SS.getSheetByName(CONFIG.PENJUALAN_IKAN.name);
+    if (!sheet) return [];
+    
+    const data = sheet.getDataRange().getValues();
+    if (data.length <= 1) return [];
+    data.shift();
+
+    let dailyStats = {};
+    data.forEach(row => {
+      if (!row[0]) return;
+      const dateObj = new Date(row[0]);
+      const dateStr = Utilities.formatDate(dateObj, "GMT+7", "yyyy-MM-dd");
+      const omzet = Number(row[4]) || 0;
+      const untung = Number(row[7]) || 0;
+
+      if (!dailyStats[dateStr]) {
+        dailyStats[dateStr] = { omzet: 0, laba: 0 };
+      }
+      dailyStats[dateStr].omzet += omzet;
+      dailyStats[dateStr].laba += untung;
+    });
+
+    return Object.keys(dailyStats).map(date => ({
+      tanggal: date,
+      omzet: dailyStats[date].omzet,
+      laba: dailyStats[date].laba
+    })).sort((a, b) => b.tanggal.localeCompare(a.tanggal));
+  } catch (e) {
     return [];
   }
 }
