@@ -327,7 +327,11 @@ function renderProducts(data) {
     const grid = document.getElementById('product-grid');
     if (!grid || !data) return;
     grid.innerHTML = '';
-    data.forEach(p => {
+    
+    // Limit to maximum 16 products
+    const displayData = data.slice(0, 16);
+    
+    displayData.forEach(p => {
         const sisaStok = p.SISA_STOK || 0;
         const harga = p.Perkiraan_Harga_Rp || 0;
         const nama = p.Nama_Produk || 'Tanpa Nama';
