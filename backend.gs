@@ -30,6 +30,10 @@ const CONFIG = {
   PRODUK_DIGITAL: {
     name: 'Produk_Digital',
     headers: ['TANGGAL', 'NOMINAL', 'HARGA JUAL', 'KEUNTUNGAN', 'CATATAN']
+  },
+  ANALISIS_SUPPLIER: {
+    name: 'Analisis_Supplier',
+    headers: ['Tanggal', 'Supplier', 'Nama Item', 'Nama Standar', 'Qty', 'Satuan', 'Qty Konversi', 'Unit Dasar', 'Harga Satuan', 'Total', 'Harga per Unit Dasar']
   }
 };
 
@@ -79,6 +83,10 @@ function doGet(e) {
   if (action === 'getDigitalProfitStats') {
     return createResponse(getDigitalProfitStats());
   }
+  
+  if (action === 'getSupplierAnalysis') {
+    return createResponse(getSupplierAnalysisData());
+  }
 
   return createResponse({ status: 'error', message: 'Action not found' });
 }
@@ -96,6 +104,9 @@ function doPost(e) {
     }
     if (data.action === 'processDigitalSale') {
       return createResponse(processDigitalSale(data));
+    }
+    if (data.action === 'addSupplierTransaction') {
+      return createResponse(addSupplierTransaction(data));
     }
     const result = processTransaction(data);
     return createResponse(result);
@@ -455,6 +466,46 @@ function getDigitalProfitStats() {
 function createResponse(data) {
   return ContentService.createTextOutput(JSON.stringify(data))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+// --- FUNGSI ANALISIS SUPPLIER ---
+
+function addSupplierTransaction(payload) {
+  const sheet = SS.getSheetByName(CONFIG.ANALISIS_SUPPLIER.name);
+  const { tanggal, supplier, nama_item, nama_standar, qty, satuan, qty_konversi, unit_dasar, harga_satuan, total } = payload;
+  
+  const hargaPerUnitDasar = harga_satuan / (qty_konversi || 1);
+  
+  sheet.appendRow([
+    tanggal,
+    supplier,
+    nama_item,
+    nama_standar,
+    qty,
+    satuan,
+    qty_konversi,
+    unit_dasar,
+    harga_satuan,
+    total,
+    hargaPerUnitDasar
+  ]);
+  
+  return { status: 'success' };
+}
+
+function getSupplierAnalysisData() {
+  const sheet = SS.getSheetByName(CONFIG.ANALISIS_SUPPLIER.name);
+  const data = sheet.getDataRange().getValues();
+  const headers = data.shift();
+  
+  return data.map(row => {
+    let obj = {};
+    headers.forEach((header, i) => {
+      const key = header.replace(/\s+/g, '_').toLowerCase();
+      obj[key] = row[i];
+    });
+    return obj;
+  });
 }
 
 // Fungsi Baru untuk Mencatat Log Stok

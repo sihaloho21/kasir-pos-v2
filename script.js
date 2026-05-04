@@ -30,6 +30,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnBayar = document.getElementById('btn-bayar');
     if (btnBayar) btnBayar.addEventListener('click', processPayment);
 
+    // Supplier Analysis Listeners
+    const supForm = document.getElementById('supplier-form');
+    if (supForm) supForm.addEventListener('submit', handleSupplierSubmit);
+    
+    ['sup-qty', 'sup-harga'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('input', () => {
+            const qty = parseFloat(document.getElementById('sup-qty').value) || 0;
+            const harga = parseFloat(document.getElementById('sup-harga').value) || 0;
+            document.getElementById('sup-total').value = qty * harga;
+        });
+    });
+
     // Fish POS Listeners
     ['fish-qty', 'fish-price', 'fish-cogs'].forEach(id => {
         const el = document.getElementById(id);
@@ -61,6 +74,10 @@ function showPage(pageId) {
         fetchDailyProfit();
         fetchFishProfit();
         fetchDigitalProfit();
+    }
+
+    if (pageId === 'supplier') {
+        fetchSupplierAnalysis();
     }
 }
 
@@ -236,6 +253,104 @@ function renderDailyProfitTable(data, targetId) {
 function formatDateShort(dateStr) {
     const options = { year: 'numeric', month: 'short', day: 'numeric' };
     return new Date(dateStr).toLocaleDateString('id-ID', options);
+}
+
+// --- SUPPLIER ANALYSIS LOGIC ---
+
+async function handleSupplierSubmit(e) {
+    e.preventDefault();
+    const btn = document.getElementById('btn-save-supplier');
+    const data = {
+        action: 'addSupplierTransaction',
+        tanggal: document.getElementById('sup-tanggal').value,
+        supplier: document.getElementById('sup-nama').value,
+        nama_item: document.getElementById('sup-item').value,
+        nama_standar: document.getElementById('sup-standar').value,
+        qty: parseFloat(document.getElementById('sup-qty').value),
+        satuan: document.getElementById('sup-satuan').value,
+        qty_konversi: parseFloat(document.getElementById('sup-konversi').value),
+        unit_dasar: document.getElementById('sup-unit-dasar').value,
+        harga_satuan: parseFloat(document.getElementById('sup-harga').value),
+        total: parseFloat(document.getElementById('sup-total').value)
+    };
+
+    try {
+        btn.disabled = true;
+        btn.innerText = 'MENYIMPAN...';
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+        const res = await response.json();
+        if (res.status === 'success') {
+            alert('Data Struk Berhasil Disimpan!');
+            document.getElementById('supplier-form').reset();
+            fetchSupplierAnalysis();
+        }
+    } catch (err) {
+        alert('Gagal menyimpan data!');
+        console.error(err);
+    } finally {
+        btn.disabled = false;
+        btn.innerText = 'SIMPAN DATA STRUK';
+    }
+}
+
+async function fetchSupplierAnalysis() {
+    try {
+        const response = await fetch(`${API_URL}?action=getSupplierAnalysis`);
+        const data = await response.json();
+        if (Array.isArray(data)) {
+            renderSupplierTables(data);
+        }
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+function renderSupplierTables(data) {
+    // 1. Render History Table
+    const historyTable = document.getElementById('supplier-history-table');
+    if (historyTable) {
+        historyTable.innerHTML = data.sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal)).map(row => `
+            <tr class="hover:bg-gray-50 transition">
+                <td class="p-3 text-xs text-gray-500">${formatDateShort(row.tanggal)}</td>
+                <td class="p-3">
+                    <div class="font-medium text-gray-700">${row.nama_item}</div>
+                    <div class="text-[10px] text-indigo-500 uppercase font-bold">${row.nama_standar}</div>
+                </td>
+                <td class="p-3 text-gray-600 font-medium">${row.supplier}</td>
+                <td class="p-3 font-bold text-teal-600">${formatRupiah(row.harga_per_unit_dasar)}<span class="text-[10px] text-gray-400 font-normal"> / ${row.unit_dasar}</span></td>
+            </tr>
+        `).join('');
+    }
+
+    // 2. Calculate Best Suppliers
+    const bestTable = document.getElementById('best-supplier-table');
+    if (bestTable) {
+        const bestPrices = {};
+        data.forEach(row => {
+            const key = row.nama_standar.toUpperCase();
+            const price = parseFloat(row.harga_per_unit_dasar);
+            if (!bestPrices[key] || price < bestPrices[key].price) {
+                bestPrices[key] = {
+                    item: row.nama_standar,
+                    supplier: row.supplier,
+                    price: price,
+                    unit: row.unit_dasar
+                };
+            }
+        });
+
+        bestTable.innerHTML = Object.values(bestPrices).map(row => `
+            <tr class="hover:bg-green-50 transition">
+                <td class="p-3 font-bold text-gray-700">${row.item}</td>
+                <td class="p-3"><span class="bg-indigo-100 text-indigo-700 px-2 py-1 rounded-md text-[10px] font-black uppercase">${row.supplier}</span></td>
+                <td class="p-3 font-black text-green-600">${formatRupiah(row.price)}</td>
+                <td class="p-3 text-gray-400 text-xs">/ ${row.unit}</td>
+            </tr>
+        `).join('');
+    }
 }
 
 // --- CORE POS LOGIC ---
