@@ -363,11 +363,13 @@ function renderSupplierTables(data) {
             const uniquePrices = Array.from(new Map(allPrices.map(p => [p.price, p])).values());
             uniquePrices.sort((a, b) => a.price - b.price);
             
-            // Build alternative prices HTML
+            // Build alternative prices HTML with price difference per slop (10 packs)
             const alternativePricesHTML = uniquePrices.length > 1 
-                ? `<div class="text-[10px] text-gray-400 mt-2 space-y-1">${uniquePrices.slice(1).map(alt => `
-                    <div><span style="text-decoration: line-through;">${formatRupiah(alt.price)}</span> <span class="text-gray-500">(${alt.supplier})</span></div>
-                `).join('')}</div>`
+                ? `<div class="text-[10px] text-gray-400 mt-2 space-y-1">${uniquePrices.slice(1).map(alt => {
+                    const priceDiff = alt.price - row.price;
+                    const diffPerSlop = priceDiff * 10; // 1 slop = 10 packs
+                    return `<div><span style="text-decoration: line-through;">${formatRupiah(alt.price)}</span> <span class="text-gray-500">(${alt.supplier})</span> <span class="text-red-500 font-semibold">+${formatRupiah(diffPerSlop)}/slop</span></div>`;
+                }).join('')}</div>`
                 : '';
             
             return `
