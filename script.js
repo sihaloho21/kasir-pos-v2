@@ -264,14 +264,14 @@ async function handleSupplierSubmit(e) {
         action: 'addSupplierTransaction',
         tanggal: document.getElementById('sup-tanggal').value,
         supplier: document.getElementById('sup-nama').value,
-        nama_item: document.getElementById('sup-item').value,
-        nama_standar: document.getElementById('sup-standar').value,
+        item: document.getElementById('sup-item').value,
+        harga: parseFloat(document.getElementById('sup-harga').value),
         qty: parseFloat(document.getElementById('sup-qty').value),
         satuan: document.getElementById('sup-satuan').value,
+        total: parseFloat(document.getElementById('sup-total').value),
+        nama_standar: document.getElementById('sup-standar').value,
         qty_konversi: parseFloat(document.getElementById('sup-konversi').value),
-        unit_dasar: document.getElementById('sup-unit-dasar').value,
-        harga_satuan: parseFloat(document.getElementById('sup-harga').value),
-        total: parseFloat(document.getElementById('sup-total').value)
+        unit_dasar: document.getElementById('sup-unit-dasar').value
     };
 
     try {
@@ -316,11 +316,11 @@ function renderSupplierTables(data) {
             <tr class="hover:bg-gray-50 transition">
                 <td class="p-3 text-xs text-gray-500">${formatDateShort(row.tanggal)}</td>
                 <td class="p-3">
-                    <div class="font-medium text-gray-700">${row.nama_item}</div>
-                    <div class="text-[10px] text-indigo-500 uppercase font-bold">${row.nama_standar}</div>
+                    <div class="font-medium text-gray-700">${row.item}</div>
+                    <div class="text-[10px] text-indigo-500 uppercase font-bold">${row.nama_standar || '-'}</div>
                 </td>
                 <td class="p-3 text-gray-600 font-medium">${row.supplier}</td>
-                <td class="p-3 font-bold text-teal-600">${formatRupiah(row.harga_per_unit_dasar)}<span class="text-[10px] text-gray-400 font-normal"> / ${row.unit_dasar}</span></td>
+                <td class="p-3 font-bold text-teal-600">${formatRupiah(row.harga_per_unit_dasar || 0)}<span class="text-[10px] text-gray-400 font-normal"> / ${row.unit_dasar || '-'}</span></td>
             </tr>
         `).join('');
     }
@@ -330,6 +330,7 @@ function renderSupplierTables(data) {
     if (bestTable) {
         const bestPrices = {};
         data.forEach(row => {
+            if (!row.nama_standar) return; // Skip if no standard name
             const key = row.nama_standar.toUpperCase();
             const price = parseFloat(row.harga_per_unit_dasar);
             if (!bestPrices[key] || price < bestPrices[key].price) {

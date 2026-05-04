@@ -32,8 +32,8 @@ const CONFIG = {
     headers: ['TANGGAL', 'NOMINAL', 'HARGA JUAL', 'KEUNTUNGAN', 'CATATAN']
   },
   ANALISIS_SUPPLIER: {
-    name: 'Analisis_Supplier',
-    headers: ['Tanggal', 'Supplier', 'Nama Item', 'Nama Standar', 'Qty', 'Satuan', 'Qty Konversi', 'Unit Dasar', 'Harga Satuan', 'Total', 'Harga per Unit Dasar']
+    name: 'SUPLIER_BELANJA',
+    headers: ['Tanggal', 'Supplier', 'Item', 'Harga', 'Qty', 'Satuan', 'Total', 'Nama Standar', 'Qty Konversi', 'Unit Dasar', 'Harga per Unit Dasar']
   }
 };
 
@@ -472,21 +472,21 @@ function createResponse(data) {
 
 function addSupplierTransaction(payload) {
   const sheet = SS.getSheetByName(CONFIG.ANALISIS_SUPPLIER.name);
-  const { tanggal, supplier, nama_item, nama_standar, qty, satuan, qty_konversi, unit_dasar, harga_satuan, total } = payload;
+  const { tanggal, supplier, item, harga, qty, satuan, total, nama_standar, qty_konversi, unit_dasar } = payload;
   
-  const hargaPerUnitDasar = harga_satuan / (qty_konversi || 1);
+  const hargaPerUnitDasar = harga / (qty_konversi || 1);
   
   sheet.appendRow([
     tanggal,
     supplier,
-    nama_item,
-    nama_standar,
+    item,
+    harga,
     qty,
     satuan,
+    total,
+    nama_standar,
     qty_konversi,
     unit_dasar,
-    harga_satuan,
-    total,
     hargaPerUnitDasar
   ]);
   
