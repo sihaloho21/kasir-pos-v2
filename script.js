@@ -325,14 +325,28 @@ function renderSupplierTables(data) {
         `).join('');
     }
 
-    // 2. Calculate Best Suppliers
+    // 2. Calculate Best Suppliers with Alternative Prices
     const bestTable = document.getElementById('best-supplier-table');
     if (bestTable) {
         const bestPrices = {};
+        const allPricesByItem = {};
+        
+        // First pass: collect all prices for each item
         data.forEach(row => {
-            if (!row.nama_standar) return; // Skip if no standard name
+            if (!row.nama_standar) return;
             const key = row.nama_standar.toUpperCase();
             const price = parseFloat(row.harga_per_unit_dasar);
+            
+            if (!allPricesByItem[key]) {
+                allPricesByItem[key] = [];
+            }
+            allPricesByItem[key].push({
+                supplier: row.supplier,
+                price: price,
+                unit: row.unit_dasar
+            });
+            
+            // Track the best price
             if (!bestPrices[key] || price < bestPrices[key].price) {
                 bestPrices[key] = {
                     item: row.nama_standar,
@@ -343,14 +357,31 @@ function renderSupplierTables(data) {
             }
         });
 
-        bestTable.innerHTML = Object.values(bestPrices).map(row => `
-            <tr class="hover:bg-green-50 transition">
-                <td class="p-3 font-bold text-gray-700">${row.item}</td>
-                <td class="p-3"><span class="bg-indigo-100 text-indigo-700 px-2 py-1 rounded-md text-[10px] font-black uppercase">${row.supplier}</span></td>
-                <td class="p-3 font-black text-green-600">${formatRupiah(row.price)}</td>
-                <td class="p-3 text-gray-400 text-xs">/ ${row.unit}</td>
-            </tr>
-        `).join('');
+        bestTable.innerHTML = Object.entries(bestPrices).map(([key, row]) => {
+            // Get all prices for this item and sort by price
+            const allPrices = allPricesByItem[key] || [];
+            const uniquePrices = Array.from(new Map(allPrices.map(p => [p.price, p])).values());
+            uniquePrices.sort((a, b) => a.price - b.price);
+            
+            // Build alternative prices HTML
+            const alternativePricesHTML = uniquePrices.length > 1 
+                ? `<div class="text-[10px] text-gray-400 mt-2 space-y-1">${uniquePrices.slice(1).map(alt => `
+                    <div><span style="text-decoration: line-through;">${formatRupiah(alt.price)}</span> <span class="text-gray-500">(${alt.supplier})</span></div>
+                `).join('')}</div>`
+                : '';
+            
+            return `
+                <tr class="hover:bg-green-50 transition">
+                    <td class="p-3 font-bold text-gray-700">${row.item}</td>
+                    <td class="p-3"><span class="bg-indigo-100 text-indigo-700 px-2 py-1 rounded-md text-[10px] font-black uppercase">${row.supplier}</span></td>
+                    <td class="p-3">
+                        <div class="font-black text-green-600">${formatRupiah(row.price)}</div>
+                        ${alternativePricesHTML}
+                    </td>
+                    <td class="p-3 text-gray-400 text-xs">/ ${row.unit}</td>
+                </tr>
+            `;
+        }).join('');
     }
 }
 
