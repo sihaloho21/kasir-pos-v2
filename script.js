@@ -56,6 +56,52 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
+// Fungsi Notifikasi Modal
+function showNotification(title, message, type = 'success') {
+    const modal = document.getElementById('notification-modal');
+    const content = document.getElementById('modal-content');
+    const iconContainer = document.getElementById('modal-icon-container');
+    const icon = document.getElementById('modal-icon');
+    const titleEl = document.getElementById('modal-title');
+    const messageEl = document.getElementById('modal-message');
+
+    titleEl.innerText = title;
+    messageEl.innerText = message;
+
+    // Reset classes
+    iconContainer.className = 'mx-auto flex items-center justify-center h-20 w-20 rounded-full mb-6';
+    icon.className = 'fas text-4xl';
+
+    if (type === 'success') {
+        iconContainer.classList.add('bg-green-100', 'text-green-600');
+        icon.classList.add('fa-check-circle');
+    } else if (type === 'error') {
+        iconContainer.classList.add('bg-red-100', 'text-red-600');
+        icon.classList.add('fa-times-circle');
+    } else {
+        iconContainer.classList.add('bg-blue-100', 'text-blue-600');
+        icon.classList.add('fa-info-circle');
+    }
+
+    modal.classList.remove('hidden');
+    setTimeout(() => {
+        content.classList.remove('scale-95', 'opacity-0');
+        content.classList.add('scale-100', 'opacity-100');
+    }, 10);
+}
+
+function closeNotification() {
+    const modal = document.getElementById('notification-modal');
+    const content = document.getElementById('modal-content');
+    
+    content.classList.remove('scale-100', 'opacity-100');
+    content.classList.add('scale-95', 'opacity-0');
+    
+    setTimeout(() => {
+        modal.classList.add('hidden');
+    }, 200);
+}
+
 // Fungsi Navigasi Halaman
 function showPage(pageId) {
     document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
@@ -136,18 +182,18 @@ async function processDigitalSale() {
 
         const res = await response.json();
         if (res.status === 'success') {
-            alert('Transaksi Digital Berhasil!');
+            showNotification('Berhasil!', 'Transaksi Digital Berhasil Disimpan');
             document.getElementById('digital-nominal').value = '';
             document.getElementById('digital-price').value = '';
             document.getElementById('digital-note').value = '';
             updateDigitalPreview();
             fetchDashboard();
         } else {
-            alert('Gagal: ' + res.message);
+            showNotification('Gagal!', res.message, 'error');
         }
     } catch (e) {
         console.error(e);
-        alert('Terjadi kesalahan koneksi!');
+        showNotification('Kesalahan!', 'Terjadi kesalahan koneksi!', 'error');
     } finally {
         btn.disabled = false;
         btn.innerText = 'SIMPAN TRANSAKSI DIGITAL';
@@ -185,17 +231,17 @@ async function processFishSale() {
         });
         const res = await response.json();
         if (res.status === 'success') {
-            alert('Transaksi Ikan Berhasil!');
+            showNotification('Berhasil!', 'Transaksi Ikan Berhasil Disimpan');
             document.getElementById('fish-qty').value = '';
             document.getElementById('fish-price').value = '';
             document.getElementById('fish-cogs').value = '';
             updateFishPreview();
             fetchDashboard();
         } else {
-            alert('Gagal: ' + res.message);
+            showNotification('Gagal!', res.message, 'error');
         }
     } catch (e) {
-        alert('Terjadi kesalahan koneksi!');
+        showNotification('Kesalahan!', 'Terjadi kesalahan koneksi!', 'error');
     } finally {
         btn.disabled = false;
         btn.innerText = 'SIMPAN TRANSAKSI IKAN';
@@ -578,13 +624,17 @@ async function processPayment() {
         const response = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ items: cart }) });
         const res = await response.json();
         if (res.status === 'success') {
-            alert('Transaksi Berhasil!');
+            showNotification('Berhasil!', 'Transaksi Berhasil Disimpan');
             cart = [];
             renderCart();
             fetchProducts();
             fetchDashboard();
-        } else { alert('Gagal: ' + res.message); }
-    } catch (e) { alert('Gagal memproses pembayaran!'); }
+        } else { 
+            showNotification('Gagal!', res.message, 'error'); 
+        }
+    } catch (e) { 
+        showNotification('Kesalahan!', 'Gagal memproses pembayaran!', 'error'); 
+    }
     finally { btn.disabled = false; btn.innerText = 'BAYAR'; }
 }
 
