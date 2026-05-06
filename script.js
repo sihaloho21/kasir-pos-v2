@@ -481,7 +481,41 @@ async function fetchDashboard() {
 
 function updateReportUI(stats) {
     const container = document.getElementById('report-container');
+    const totalCard = document.getElementById('total-performance-card');
     if (!container || !stats) return;
+
+    // Calculate Totals
+    const totalOmzet = (stats.segments?.warung?.omzet || 0) + 
+                       (stats.segments?.fish?.omzet || 0) + 
+                       (stats.segments?.digital?.omzet || 0);
+    const totalLaba = (stats.segments?.warung?.laba || 0) + 
+                      (stats.segments?.fish?.laba || 0) + 
+                      (stats.segments?.digital?.laba || 0);
+
+    // Render Total Performance Card
+    if (totalCard) {
+        totalCard.innerHTML = `
+            <div class="bg-gradient-to-r from-indigo-600 to-teal-600 rounded-2xl p-6 text-white shadow-xl">
+                <div class="flex flex-col md:flex-row justify-between items-center gap-6">
+                    <div class="text-center md:text-left">
+                        <p class="text-indigo-100 text-xs font-bold uppercase tracking-widest mb-1">Total Performa Keseluruhan</p>
+                        <h3 class="text-4xl font-black">${formatRupiah(totalOmzet)}</h3>
+                        <p class="text-teal-100 text-sm mt-1">Total Omzet Gabungan</p>
+                    </div>
+                    <div class="h-px md:h-16 w-full md:w-px bg-white/20"></div>
+                    <div class="text-center md:text-left">
+                        <p class="text-indigo-100 text-xs font-bold uppercase tracking-widest mb-1">Total Laba Bersih</p>
+                        <h3 class="text-4xl font-black text-yellow-300">${formatRupiah(totalLaba)}</h3>
+                        <p class="text-teal-100 text-sm mt-1">Keuntungan Semua Segmen</p>
+                    </div>
+                    <div class="hidden lg:block">
+                        <i class="fas fa-chart-line text-6xl text-white/20"></i>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
     const createCard = (title, data, color) => {
         if (!data) return '';
         const omzet = data.omzet || 0;
@@ -489,18 +523,30 @@ function updateReportUI(stats) {
         const topNama = data.top ? data.top.nama : '-';
         const topQty = data.top ? data.top.qty : 0;
         return `
-            <div class="bg-${color}-50 p-4 rounded-xl border border-${color}-100">
-                <h4 class="text-xs font-bold text-${color}-600 uppercase">${title}</h4>
-                <p class="text-xl font-black text-${color}-800">${formatRupiah(omzet)}</p>
-                <p class="text-xs text-${color}-500 font-bold">Laba Bersih: ${formatRupiah(laba)}</p>
-                <p class="text-[10px] text-gray-500 mt-2 italic">Terlaris: ${topNama} (${topQty})</p>
+            <div class="bg-white p-5 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition">
+                <div class="flex items-center mb-3">
+                    <div class="w-8 h-8 rounded-lg bg-${color}-100 text-${color}-600 flex items-center justify-center mr-3">
+                        <i class="fas ${title === 'Warung' ? 'fa-store' : title === 'Ikan' ? 'fa-fish' : 'fa-mobile-alt'}"></i>
+                    </div>
+                    <h4 class="text-sm font-bold text-gray-700 uppercase">${title}</h4>
+                </div>
+                <p class="text-2xl font-black text-gray-800">${formatRupiah(omzet)}</p>
+                <div class="flex justify-between items-center mt-2">
+                    <span class="text-xs text-gray-400">Laba Bersih</span>
+                    <span class="text-sm font-bold text-${color}-600">${formatRupiah(laba)}</span>
+                </div>
+                <div class="mt-4 pt-3 border-t border-gray-50">
+                    <p class="text-[10px] text-gray-400 uppercase font-bold mb-1">Produk Terlaris</p>
+                    <p class="text-xs text-gray-600 font-medium">${topNama} <span class="text-gray-400">(${topQty})</span></p>
+                </div>
             </div>
         `;
     };
+
     container.innerHTML = `
-        ${createCard('Hari Ini', stats.daily, 'blue')}
-        ${createCard('Minggu Ini', stats.weekly, 'purple')}
-        ${createCard('Bulan Ini', stats.monthly, 'orange')}
+        ${createCard('Warung', stats.segments ? stats.segments.warung : null, 'teal')}
+        ${createCard('Ikan', stats.segments ? stats.segments.fish : null, 'blue')}
+        ${createCard('Digital', stats.segments ? stats.segments.digital : null, 'purple')}
     `;
 }
 
