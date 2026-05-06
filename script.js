@@ -433,9 +433,17 @@ async function fetchDashboard() {
             const sWarung = document.getElementById('summary-laba-warung');
             const sFish = document.getElementById('summary-laba-fish');
             const sDigital = document.getElementById('summary-laba-digital');
-            if (sWarung) sWarung.innerText = formatRupiah(stats.segments.warung.laba);
-            if (sFish) sFish.innerText = formatRupiah(stats.segments.fish.laba);
-            if (sDigital) sDigital.innerText = formatRupiah(stats.segments.digital.laba);
+            const sTotal = document.getElementById('summary-total-laba');
+            
+            const labaWarung = stats.segments.warung?.laba || 0;
+            const labaFish = stats.segments.fish?.laba || 0;
+            const labaDigital = stats.segments.digital?.laba || 0;
+            const totalLaba = labaWarung + labaFish + labaDigital;
+
+            if (sWarung) sWarung.innerText = formatRupiah(labaWarung);
+            if (sFish) sFish.innerText = formatRupiah(labaFish);
+            if (sDigital) sDigital.innerText = formatRupiah(labaDigital);
+            if (sTotal) sTotal.innerText = formatRupiah(totalLaba);
         }
 
         renderDashboard(stats);
