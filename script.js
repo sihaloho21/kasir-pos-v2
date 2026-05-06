@@ -373,6 +373,39 @@ async function handleSupplierSubmit(e) {
     }
 }
 
+// --- STOCK LOGIC ---
+async function handleStockAction(action) {
+    const sku = document.getElementById(action === 'restock' ? 'stock-sku' : 'opname-sku').value;
+    const qty = parseFloat(document.getElementById(action === 'restock' ? 'stock-qty' : 'opname-qty').value);
+    const reason = document.getElementById(action === 'restock' ? 'stock-reason' : 'opname-reason').value;
+
+    if (!sku || isNaN(qty)) return alert('Harap isi SKU dan Jumlah!');
+
+    const btn = document.getElementById(action === 'restock' ? 'btn-restock' : 'btn-opname');
+    try {
+        btn.disabled = true;
+        btn.innerText = 'MEMPROSES...';
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action, sku, qty, reason })
+        });
+        const res = await response.json();
+        if (res.status === 'success') {
+            showNotification('Berhasil!', 'Data Stok Berhasil Diperbarui');
+            document.getElementById(action === 'restock' ? 'stock-qty' : 'opname-qty').value = '';
+            document.getElementById(action === 'restock' ? 'stock-reason' : 'opname-reason').value = '';
+            fetchProducts();
+        } else {
+            showNotification('Gagal!', res.message, 'error');
+        }
+    } catch (e) {
+        showNotification('Kesalahan!', 'Gagal memperbarui stok!', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerText = action === 'restock' ? 'TAMBAH STOK' : 'SIMPAN OPNAME';
+    }
+}
+
 // --- CORE POS LOGIC ---
 
 async function fetchProducts() {
