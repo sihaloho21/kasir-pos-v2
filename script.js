@@ -22,7 +22,10 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Pastikan elemen ada sebelum menambah listener
     const searchInput = document.getElementById('search-input');
-    if (searchInput) searchInput.addEventListener('input', filterProducts);
+    if (searchInput) {
+        // Gunakan debounce untuk pencarian agar tidak lag saat mengetik cepat
+        searchInput.addEventListener('input', debounce(filterProducts, 300));
+    }
     
     const clearCartBtn = document.getElementById('clear-cart');
     if (clearCartBtn) clearCartBtn.addEventListener('click', clearCart);
@@ -55,6 +58,19 @@ document.addEventListener('DOMContentLoaded', () => {
         if (el) el.addEventListener('input', updateDigitalPreview);
     });
 });
+
+// Helper Debounce untuk performa input
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
 
 // Fungsi Notifikasi Modal
 function showNotification(title, message, type = 'success') {
@@ -283,153 +299,77 @@ async function fetchDigitalProfit() {
 function renderDailyProfitTable(data, targetId) {
     const tableBody = document.getElementById(targetId);
     if (!tableBody) return;
-    if (!Array.isArray(data) || data.length === 0) {
-        tableBody.innerHTML = '<tr><td colspan="3" class="p-4 text-center text-gray-400 italic">Belum ada data.</td></tr>';
-        return;
-    }
-    tableBody.innerHTML = data.map(row => `
-        <tr class="hover:bg-gray-50 border-b border-gray-100 transition">
-            <td class="p-2 font-medium text-gray-600">${formatDateShort(row.tanggal)}</td>
-            <td class="p-2">${formatRupiah(row.omzet)}</td>
-            <td class="p-2 font-bold ${row.laba >= 0 ? 'text-green-600' : 'text-red-600'}">${formatRupiah(row.laba)}</td>
-        </tr>
-    `).join('');
-}
-
-function formatDateShort(dateStr) {
-    const options = { year: 'numeric', month: 'short', day: 'numeric' };
-    return new Date(dateStr).toLocaleDateString('id-ID', options);
+    tableBody.innerHTML = '';
+    data.forEach(row => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td class="px-4 py-3 text-xs text-gray-600">${row.tanggal}</td>
+            <td class="px-4 py-3 text-xs font-bold text-gray-800">${formatRupiah(row.omzet)}</td>
+            <td class="px-4 py-3 text-xs font-bold text-teal-600">${formatRupiah(row.laba)}</td>
+        `;
+        tableBody.appendChild(tr);
+    });
 }
 
 // --- SUPPLIER ANALYSIS LOGIC ---
+async function fetchSupplierAnalysis() {
+    const tableBody = document.getElementById('supplier-analysis-table-body');
+    if (!tableBody) return;
+    try {
+        const response = await fetch(`${API_URL}?action=getSupplierAnalysis`);
+        const data = await response.json();
+        if (Array.isArray(data)) renderSupplierAnalysisTable(data);
+    } catch (error) { console.error(error); }
+}
+
+function renderSupplierAnalysisTable(data) {
+    const tableBody = document.getElementById('supplier-analysis-table-body');
+    if (!tableBody) return;
+    tableBody.innerHTML = '';
+    data.forEach(row => {
+        const isRecommended = row.isRecommended;
+        const tr = document.createElement('tr');
+        tr.className = isRecommended ? 'bg-green-50' : '';
+        tr.innerHTML = `
+            <td class="px-4 py-3 text-xs text-gray-600">${row.item}</td>
+            <td class="px-4 py-3 text-xs text-gray-600">${row.supplier}</td>
+            <td class="px-4 py-3 text-xs font-bold ${isRecommended ? 'text-green-600' : 'text-gray-400 line-through'}">${formatRupiah(row.hargaPerUnit)} / ${row.unit}</td>
+            <td class="px-4 py-3 text-xs text-gray-500">${row.diffText || '-'}</td>
+        `;
+        tableBody.appendChild(tr);
+    });
+}
 
 async function handleSupplierSubmit(e) {
     e.preventDefault();
-    const btn = document.getElementById('btn-save-supplier');
-    const data = {
+    const btn = e.target.querySelector('button[type="submit"]');
+    const formData = {
         action: 'addSupplierTransaction',
-        tanggal: document.getElementById('sup-tanggal').value,
         supplier: document.getElementById('sup-nama').value,
         item: document.getElementById('sup-item').value,
         harga: parseFloat(document.getElementById('sup-harga').value),
         qty: parseFloat(document.getElementById('sup-qty').value),
         satuan: document.getElementById('sup-satuan').value,
-        total: parseFloat(document.getElementById('sup-total').value),
-        nama_standar: document.getElementById('sup-standar').value,
-        qty_konversi: parseFloat(document.getElementById('sup-konversi').value),
-        unit_dasar: document.getElementById('sup-unit-dasar').value
+        namaStandar: document.getElementById('sup-standar').value,
+        qtyKonversi: parseFloat(document.getElementById('sup-konversi').value),
+        unitDasar: document.getElementById('sup-unit-dasar').value
     };
 
     try {
         btn.disabled = true;
         btn.innerText = 'MENYIMPAN...';
-        const response = await fetch(API_URL, {
-            method: 'POST',
-            body: JSON.stringify(data)
-        });
+        const response = await fetch(API_URL, { method: 'POST', body: JSON.stringify(formData) });
         const res = await response.json();
         if (res.status === 'success') {
-            alert('Data Struk Berhasil Disimpan!');
-            document.getElementById('supplier-form').reset();
+            showNotification('Berhasil!', 'Data Supplier Berhasil Disimpan');
+            e.target.reset();
             fetchSupplierAnalysis();
         }
-    } catch (err) {
-        alert('Gagal menyimpan data!');
-        console.error(err);
+    } catch (error) {
+        showNotification('Gagal!', 'Gagal menyimpan data supplier', 'error');
     } finally {
         btn.disabled = false;
-        btn.innerText = 'SIMPAN DATA STRUK';
-    }
-}
-
-async function fetchSupplierAnalysis() {
-    try {
-        const response = await fetch(`${API_URL}?action=getSupplierAnalysis`);
-        const data = await response.json();
-        if (Array.isArray(data)) {
-            renderSupplierTables(data);
-        }
-    } catch (err) {
-        console.error(err);
-    }
-}
-
-function renderSupplierTables(data) {
-    // 1. Render History Table
-    const historyTable = document.getElementById('supplier-history-table');
-    if (historyTable) {
-        historyTable.innerHTML = data.sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal)).map(row => `
-            <tr class="hover:bg-gray-50 transition">
-                <td class="p-3 text-xs text-gray-500">${formatDateShort(row.tanggal)}</td>
-                <td class="p-3">
-                    <div class="font-medium text-gray-700">${row.item}</div>
-                    <div class="text-[10px] text-indigo-500 uppercase font-bold">${row.nama_standar || '-'}</div>
-                </td>
-                <td class="p-3 text-gray-600 font-medium">${row.supplier}</td>
-                <td class="p-3 font-bold text-teal-600">${formatRupiah(row.harga_per_unit_dasar || 0)}<span class="text-[10px] text-gray-400 font-normal"> / ${row.unit_dasar || '-'}</span></td>
-            </tr>
-        `).join('');
-    }
-
-    // 2. Calculate Best Suppliers with Alternative Prices
-    const bestTable = document.getElementById('best-supplier-table');
-    if (bestTable) {
-        const bestPrices = {};
-        const allPricesByItem = {};
-        
-        // First pass: collect all prices for each item
-        data.forEach(row => {
-            if (!row.nama_standar) return;
-            const key = row.nama_standar.toUpperCase();
-            const price = parseFloat(row.harga_per_unit_dasar);
-            
-            if (!allPricesByItem[key]) {
-                allPricesByItem[key] = [];
-            }
-            allPricesByItem[key].push({
-                supplier: row.supplier,
-                price: price,
-                unit: row.unit_dasar
-            });
-            
-            // Track the best price
-            if (!bestPrices[key] || price < bestPrices[key].price) {
-                bestPrices[key] = {
-                    item: row.nama_standar,
-                    supplier: row.supplier,
-                    price: price,
-                    unit: row.unit_dasar
-                };
-            }
-        });
-
-        bestTable.innerHTML = Object.entries(bestPrices).map(([key, row]) => {
-            // Get all prices for this item and sort by price
-            const allPrices = allPricesByItem[key] || [];
-            const uniquePrices = Array.from(new Map(allPrices.map(p => [p.price, p])).values());
-            uniquePrices.sort((a, b) => a.price - b.price);
-            
-            // Build alternative prices HTML with price difference per slop (10 packs)
-            const alternativePricesHTML = uniquePrices.length > 1 
-                ? `<div class="text-[10px] text-gray-400 mt-2 space-y-1">${uniquePrices.slice(1).map(alt => {
-                    const priceDiff = alt.price - row.price;
-                    const diffPerSlop = priceDiff * 10; // 1 slop = 10 packs
-                    return `<div><span style="text-decoration: line-through;">${formatRupiah(alt.price)}</span> <span class="text-gray-500">(${alt.supplier})</span> <span class="text-red-500 font-semibold">+${formatRupiah(diffPerSlop)}/slop</span></div>`;
-                }).join('')}</div>`
-                : '';
-            
-            return `
-                <tr class="hover:bg-green-50 transition">
-                    <td class="p-3 font-bold text-gray-700">${row.item}</td>
-                    <td class="p-3"><span class="bg-indigo-100 text-indigo-700 px-2 py-1 rounded-md text-[10px] font-black uppercase">${row.supplier}</span></td>
-                    <td class="p-3">
-                        <div class="font-black text-green-600">${formatRupiah(row.price)}</div>
-                        ${alternativePricesHTML}
-                    </td>
-                    <td class="p-3 text-gray-400 text-xs">/ ${row.unit}</td>
-                </tr>
-            `;
-        }).join('');
+        btn.innerText = 'SIMPAN DATA BELANJA';
     }
 }
 
@@ -460,45 +400,29 @@ async function fetchDashboard() {
             const sWarung = document.getElementById('summary-laba-warung');
             const sFish = document.getElementById('summary-laba-fish');
             const sDigital = document.getElementById('summary-laba-digital');
-            
             if (sWarung) sWarung.innerText = formatRupiah(stats.segments.warung.laba);
             if (sFish) sFish.innerText = formatRupiah(stats.segments.fish.laba);
             if (sDigital) sDigital.innerText = formatRupiah(stats.segments.digital.laba);
-
-            // Update Total Laba (Warung + Fish + Digital)
-            const sTotal = document.getElementById('summary-total-laba');
-            if (sTotal) {
-                const totalLaba = (stats.segments.warung.laba || 0) + 
-                                  (stats.segments.fish.laba || 0) + 
-                                  (stats.segments.digital.laba || 0);
-                sTotal.innerText = formatRupiah(totalLaba);
-            }
         }
 
-        if (stats) updateReportUI(stats);
+        renderDashboard(stats);
     } catch (error) { console.error(error); }
 }
 
-function updateReportUI(stats) {
-    const container = document.getElementById('report-container');
-    const totalCard = document.getElementById('total-performance-card');
+function renderDashboard(stats) {
+    const container = document.getElementById('dashboard-content');
+    const summaryContainer = document.getElementById('dashboard-summary');
     if (!container || !stats) return;
 
-    // Calculate Totals
-    const totalOmzet = (stats.segments?.warung?.omzet || 0) + 
-                       (stats.segments?.fish?.omzet || 0) + 
-                       (stats.segments?.digital?.omzet || 0);
-    const totalLaba = (stats.segments?.warung?.laba || 0) + 
-                      (stats.segments?.fish?.laba || 0) + 
-                      (stats.segments?.digital?.laba || 0);
-
-    // Render Total Performance Card
-    if (totalCard) {
-        totalCard.innerHTML = `
-            <div class="bg-gradient-to-r from-indigo-600 to-teal-600 rounded-2xl p-6 text-white shadow-xl">
+    if (summaryContainer) {
+        const totalOmzet = (stats.daily?.omzet || 0) + (stats.segments?.fish?.omzet || 0) + (stats.segments?.digital?.omzet || 0);
+        const totalLaba = (stats.daily?.laba || 0) + (stats.segments?.fish?.laba || 0) + (stats.segments?.digital?.laba || 0);
+        
+        summaryContainer.innerHTML = `
+            <div class="bg-gradient-to-br from-teal-600 to-teal-800 rounded-2xl p-8 text-white shadow-lg mb-8">
                 <div class="flex flex-col md:flex-row justify-between items-center gap-6">
                     <div class="text-center md:text-left">
-                        <p class="text-indigo-100 text-xs font-bold uppercase tracking-widest mb-1">Total Performa Keseluruhan</p>
+                        <p class="text-teal-100 text-xs font-bold uppercase tracking-widest mb-1">Total Omzet Hari Ini</p>
                         <h3 class="text-4xl font-black">${formatRupiah(totalOmzet)}</h3>
                         <p class="text-teal-100 text-sm mt-1">Total Omzet Gabungan</p>
                     </div>
@@ -567,9 +491,11 @@ function renderCategories(data) {
 function renderProducts(data) {
     const grid = document.getElementById('product-grid');
     if (!grid || !data) return;
-    grid.innerHTML = '';
     
-    // Limit to maximum 16 products
+    // Gunakan DocumentFragment untuk performa DOM yang lebih baik
+    const fragment = document.createDocumentFragment();
+    
+    // Limit to maximum 16 products for initial display/filter
     const displayData = data.slice(0, 16);
     
     displayData.forEach(p => {
@@ -578,6 +504,7 @@ function renderProducts(data) {
         const nama = p.Nama_Produk || 'Tanpa Nama';
         const isLow = sisaStok < 5;
         const initial = nama.substring(0, 2).toUpperCase();
+        
         const card = document.createElement('div');
         card.className = `product-card bg-white p-4 rounded-xl border ${isLow ? 'border-red-500 bg-red-50' : 'border-gray-100'} flex flex-col items-center text-center cursor-pointer hover:shadow-md transition`;
         card.onclick = () => addToCart(p);
@@ -587,9 +514,14 @@ function renderProducts(data) {
             <p class="text-teal-600 font-bold text-sm">${formatRupiah(harga)}</p>
             <p class="text-[10px] ${isLow ? 'text-red-600 font-bold' : 'text-gray-400'}">Stok: ${sisaStok} ${isLow ? '!' : ''}</p>
         `;
-        grid.appendChild(card);
+        fragment.appendChild(card);
     });
-    updateStockDropdowns(data);
+    
+    grid.innerHTML = '';
+    grid.appendChild(fragment);
+    
+    // Update dropdowns secara asinkron agar tidak memblokir render utama
+    setTimeout(() => updateStockDropdowns(data), 0);
 }
 
 function updateStockDropdowns(data) {
@@ -598,13 +530,15 @@ function updateStockDropdowns(data) {
     selects.forEach(id => {
         const el = document.getElementById(id);
         if (!el) return;
-        el.innerHTML = '<option value="">Pilih Produk...</option>';
+        
+        let options = '<option value="">Pilih Produk...</option>';
         data.forEach(p => {
             const sku = p.SKU || '';
             const nama = p.Nama_Produk || 'Tanpa Nama';
             const sisaStok = p.SISA_STOK || 0;
-            el.innerHTML += `<option value="${sku}">${nama} (Stok: ${sisaStok})</option>`;
+            options += `<option value="${sku}">${nama} (Stok: ${sisaStok})</option>`;
         });
+        el.innerHTML = options;
     });
 }
 
@@ -637,8 +571,10 @@ function renderCart() {
     const container = document.getElementById('cart-items');
     const totalEl = document.getElementById('cart-total');
     if (!container || !totalEl) return;
-    container.innerHTML = '';
+    
+    const fragment = document.createDocumentFragment();
     let total = 0;
+    
     cart.forEach((item, index) => {
         total += item.Total;
         const div = document.createElement('div');
@@ -654,9 +590,15 @@ function renderCart() {
                 <button onclick="updateQty(${index}, 1)" class="text-gray-400 hover:text-green-500"><i class="fas fa-plus-circle"></i></button>
             </div>
         `;
-        container.appendChild(div);
+        fragment.appendChild(div);
     });
-    if (cart.length === 0) container.innerHTML = '<p class="text-center text-gray-400 text-xs mt-10">Kosong</p>';
+    
+    container.innerHTML = '';
+    if (cart.length === 0) {
+        container.innerHTML = '<p class="text-center text-gray-400 text-xs mt-10">Kosong</p>';
+    } else {
+        container.appendChild(fragment);
+    }
     totalEl.innerText = formatRupiah(total);
 }
 
@@ -712,4 +654,3 @@ function filterProducts() {
 function formatRupiah(num) {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(num || 0);
 }
-// Updated by Manus
