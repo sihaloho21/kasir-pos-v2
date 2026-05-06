@@ -621,6 +621,16 @@ function addToCart(product) {
         cart.push({ SKU: product.SKU, Nama_Produk: nama, Satuan: satuan, Harga_Satuan: harga, Qty: 1, Total: harga });
     }
     renderCart();
+    
+    // Bersihkan input pencarian dan reset tampilan produk
+    const searchInput = document.getElementById('search-input');
+    if (searchInput) {
+        searchInput.value = '';
+        // Reset tampilan produk ke kategori yang dipilih atau semua produk
+        filterProducts();
+        // Fokus kembali ke input pencarian
+        searchInput.focus();
+    }
 }
 
 function renderCart() {
