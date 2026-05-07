@@ -39,7 +39,6 @@ const CONFIG = {
 
 /**
  * FUNGSI UTAMA UNTUK SETUP OTOMATIS
- * Jalankan fungsi ini sekali (Klik tombol 'Run' di editor GAS)
  */
 function setupSheets() {
   Object.keys(CONFIG).forEach(key => {
@@ -49,70 +48,42 @@ function setupSheets() {
     if (!sheet) {
       sheet = SS.insertSheet(sheetConfig.name);
       sheet.appendRow(sheetConfig.headers);
-      // Beri format tebal pada header
       sheet.getRange(1, 1, 1, sheetConfig.headers.length).setFontWeight("bold").setBackground("#f3f3f3");
-      Logger.log('Sheet ' + sheetConfig.name + ' berhasil dibuat.');
-    } else {
-      Logger.log('Sheet ' + sheetConfig.name + ' sudah ada.');
     }
   });
-  return "Setup Selesai! Silakan cek Spreadsheet Anda.";
+  return "Setup Selesai!";
 }
 
-// 1. Fungsi untuk melayani permintaan dari Frontend (Web App)
 function doGet(e) {
-  setupSheets(); // Pastikan sheet ada saat diakses
   const action = e.parameter.action;
-  
-  if (action === 'getProducts') {
-    return createResponse(getProductsData());
-  }
-  
-  if (action === 'getDashboardStats') {
-    return createResponse(getDashboardStats());
-  }
-  
-  if (action === 'getDailyProfitStats') {
-    return createResponse(getDailyProfitStats());
-  }
-  
-  if (action === 'getFishProfitStats') {
-    return createResponse(getFishProfitStats());
-  }
-  
-  if (action === 'getDigitalProfitStats') {
-    return createResponse(getDigitalProfitStats());
-  }
-  
-  if (action === 'getSupplierAnalysis') {
-    return createResponse(getSupplierAnalysisData());
-  }
-
-  return createResponse({ status: 'error', message: 'Action not found' });
-}
-
-// 2. Fungsi untuk menerima data transaksi (POST)
-function doPost(e) {
-  setupSheets(); // Pastikan sheet ada saat diakses
   try {
-    const data = JSON.parse(e.postData.contents);
-    if (data.action === 'restock' || data.action === 'opname') {
-      return createResponse(handleStockAction(data));
-    }
-    if (data.action === 'processFishSale') {
-      return createResponse(processFishSale(data));
-    }
-    if (data.action === 'processDigitalSale') {
-      return createResponse(processDigitalSale(data));
-    }
-    if (data.action === 'addSupplierTransaction') {
-      return createResponse(addSupplierTransaction(data));
-    }
-    const result = processTransaction(data);
-    return createResponse(result);
+    if (action === 'getProducts') return createResponse(getProductsData());
+    if (action === 'getDashboardStats') return createResponse(getDashboardStats());
+    if (action === 'getDailyProfitStats') return createResponse(getDailyProfitStats());
+    if (action === 'getFishProfitStats') return createResponse(getFishProfitStats());
+    if (action === 'getDigitalProfitStats') return createResponse(getDigitalProfitStats());
+    if (action === 'getSupplierAnalysis') return createResponse(getSupplierAnalysisData());
+    return createResponse({ status: 'error', message: 'Action not found' });
   } catch (err) {
     return createResponse({ status: 'error', message: err.toString() });
   }
+}
+
+function doPost(e) {
+  try {
+    const data = JSON.parse(e.postData.contents);
+    if (data.action === 'restock' || data.action === 'opname') return createResponse(handleStockAction(data));
+    if (data.action === 'processFishSale') return createResponse(processFishSale(data));
+    if (data.action === 'processDigitalSale') return createResponse(processDigitalSale(data));
+    if (data.action === 'addSupplierTransaction') return createResponse(addSupplierTransaction(data));
+    return createResponse(processTransaction(data));
+  } catch (err) {
+    return createResponse({ status: 'error', message: err.toString() });
+  }
+}
+
+function createResponse(data) {
+  return ContentService.createTextOutput(JSON.stringify(data)).setMimeType(ContentService.MimeType.JSON);
 }
 
 // --- FUNGSI LOGIKA ---
@@ -124,7 +95,6 @@ function getProductsData() {
   return data.map(row => {
     let obj = {};
     headers.forEach((header, i) => {
-      // Ubah spasi jadi underscore untuk kemudahan di JS Frontend
       const key = header.replace(/\s+/g, '_').replace(/[()]/g, '');
       obj[key] = row[i];
     });
@@ -134,28 +104,16 @@ function getProductsData() {
 
 function processTransaction(payload) {
   const { items } = payload;
+  if (!items || items.length === 0) return { status: 'error', message: 'Keranjang kosong' };
+  
   const sheetPenjualan = SS.getSheetByName(CONFIG.PENJUALAN.name);
   const timestamp = new Date();
   const dateStr = Utilities.formatDate(timestamp, "GMT+7", "yyyy-MM-dd HH:mm:ss");
   const trxId = "TRX-" + Utilities.formatDate(timestamp, "GMT+7", "yyyyMMdd") + "-" + Math.floor(1000 + Math.random() * 9000);
 
   items.forEach(item => {
-    // 1. Catat Penjualan
-    sheetPenjualan.appendRow([
-      trxId,
-      dateStr,
-      item.SKU,
-      item.Nama_Produk,
-      item.Satuan,
-      item.Harga_Satuan,
-      item.Qty,
-      item.Total
-    ]);
-
-    // 2. Update Stok
+    sheetPenjualan.appendRow([trxId, dateStr, item.SKU, item.Nama_Produk, item.Satuan, item.Harga_Satuan, item.Qty, item.Total]);
     updateStock(item.SKU, item.Qty);
-
-    // 3. Update Rekap
     updateRekap(item);
   });
 
@@ -167,7 +125,7 @@ function updateStock(sku, qtySold) {
   const data = sheet.getDataRange().getValues();
   for (let i = 1; i < data.length; i++) {
     if (data[i][0] == sku) { 
-      const currentSisaStok = data[i][7] || 0; 
+      const currentSisaStok = Number(data[i][7]) || 0; 
       sheet.getRange(i + 1, 8).setValue(currentSisaStok - qtySold);
       break;
     }
@@ -189,19 +147,17 @@ function updateRekap(item) {
       const newQty = currentQty + item.Qty;
       const newOmzet = currentOmzet + item.Total;
       const newHPP = currentHPP + (modal * item.Qty);
-      const newLaba = newOmzet - newHPP;
 
       sheet.getRange(i + 1, 6).setValue(newQty);
       sheet.getRange(i + 1, 7).setValue(newOmzet);
       sheet.getRange(i + 1, 8).setValue(newHPP);
-      sheet.getRange(i + 1, 9).setValue(newLaba);
+      sheet.getRange(i + 1, 9).setValue(newOmzet - newHPP);
       found = true;
       break;
     }
   }
   
   if (!found) {
-    // Jika SKU belum ada di rekap, ambil data modal dari sheet PRODUK
     const produkData = SS.getSheetByName(CONFIG.PRODUK.name).getDataRange().getValues();
     let modal = 0;
     for(let j=1; j<produkData.length; j++) {
@@ -216,331 +172,177 @@ function updateRekap(item) {
 }
 
 function getDashboardStats() {
-  const sheetPenjualan = SS.getSheetByName(CONFIG.PENJUALAN.name);
-  const data = sheetPenjualan.getDataRange().getValues();
-  const headers = data.shift();
-  
   const now = new Date();
   const todayStr = Utilities.formatDate(now, "GMT+7", "yyyy-MM-dd");
   
-  // Helper untuk cek periode
-  const isToday = (d) => Utilities.formatDate(d, "GMT+7", "yyyy-MM-dd") === todayStr;
-  const isThisWeek = (d) => {
-    const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
-    return d >= startOfWeek;
-  };
-  const isThisMonth = (d) => d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-
-  let stats = {
-    daily: { omzet: 0, laba: 0, items: {} },
-    weekly: { omzet: 0, laba: 0, items: {} },
-    monthly: { omzet: 0, laba: 0, items: {} }
-  };
-
-  // Ambil data modal dari sheet Rekap untuk hitung laba bersih
+  const sheetPenjualan = SS.getSheetByName(CONFIG.PENJUALAN.name);
+  const data = sheetPenjualan.getDataRange().getValues();
+  data.shift();
+  
   const rekapData = SS.getSheetByName(CONFIG.REKAP.name).getDataRange().getValues();
   rekapData.shift();
   let modalMap = {};
-  rekapData.forEach(r => modalMap[r[0]] = r[3]); // SKU -> Harga Modal
+  rekapData.forEach(r => modalMap[r[0]] = r[3]);
+
+  let stats = { daily: { omzet: 0, laba: 0, items: {} } };
 
   data.forEach(row => {
     const tgl = new Date(row[1]);
-    const sku = row[2];
-    const nama = row[3];
-    const qty = Number(row[6]);
-    const total = Number(row[7]);
-    const modal = modalMap[sku] || 0;
-    const laba = total - (modal * qty);
+    if (Utilities.formatDate(tgl, "GMT+7", "yyyy-MM-dd") === todayStr) {
+      const sku = row[2];
+      const nama = row[3];
+      const qty = Number(row[6]);
+      const total = Number(row[7]);
+      const modal = modalMap[sku] || 0;
+      const laba = total - (modal * qty);
 
-    const updateStat = (period) => {
-      stats[period].omzet += total;
-      stats[period].laba += laba;
-      if (!stats[period].items[nama]) stats[period].items[nama] = 0;
-      stats[period].items[nama] += qty;
-    };
-
-    if (isToday(tgl)) updateStat('daily');
-    if (isThisWeek(tgl)) updateStat('weekly');
-    if (isThisMonth(tgl)) updateStat('monthly');
+      stats.daily.omzet += total;
+      stats.daily.laba += laba;
+      stats.daily.items[nama] = (stats.daily.items[nama] || 0) + qty;
+    }
   });
 
-  // Helper untuk cari produk terlaris
-  const getTopProduct = (items) => {
+  const getTop = (items) => {
     let top = { nama: "-", qty: 0 };
-    for (let name in items) {
-      if (items[name] > top.qty) top = { nama: name, qty: items[name] };
-    }
+    for (let n in items) if (items[n] > top.qty) top = { nama: n, qty: items[n] };
     return top;
   };
 
-  // Get Fish Stats for Today
   const fishStats = getFishProfitStats();
   const fishToday = fishStats.find(s => s.tanggal === todayStr) || { omzet: 0, laba: 0 };
-  
-  // Get Digital Stats for Today
   const digitalStats = getDigitalProfitStats();
   const digitalToday = digitalStats.find(s => s.tanggal === todayStr) || { omzet: 0, laba: 0 };
 
   return {
-    daily: { ...stats.daily, top: getTopProduct(stats.daily.items) },
-    weekly: { ...stats.weekly, top: getTopProduct(stats.weekly.items) },
-    monthly: { ...stats.monthly, top: getTopProduct(stats.monthly.items) },
+    daily: { ...stats.daily, top: getTop(stats.daily.items) },
     segments: {
-      warung: { laba: stats.daily.laba },
-      fish: { laba: fishToday.laba },
-      digital: { laba: digitalToday.laba }
+      warung: { omzet: stats.daily.omzet, laba: stats.daily.laba },
+      fish: { omzet: fishToday.omzet, laba: fishToday.laba },
+      digital: { omzet: digitalToday.omzet, laba: digitalToday.laba }
     }
   };
 }
 
 function getDailyProfitStats() {
-  try {
-    const sheetPenjualan = SS.getSheetByName(CONFIG.PENJUALAN.name);
-    if (!sheetPenjualan) return [];
+  const sheet = SS.getSheetByName(CONFIG.PENJUALAN.name);
+  const data = sheet.getDataRange().getValues();
+  data.shift();
+  
+  const rekapData = SS.getSheetByName(CONFIG.REKAP.name).getDataRange().getValues();
+  rekapData.shift();
+  let modalMap = {};
+  rekapData.forEach(r => modalMap[r[0]] = r[3]);
+
+  let daily = {};
+  data.forEach(row => {
+    const d = Utilities.formatDate(new Date(row[1]), "GMT+7", "yyyy-MM-dd");
+    const qty = Number(row[6]);
+    const total = Number(row[7]);
+    const laba = total - ((modalMap[row[2]] || 0) * qty);
     
-    const data = sheetPenjualan.getDataRange().getValues();
-    if (data.length <= 1) return []; // Only headers or empty
-    data.shift(); // Remove headers
-    
-    // Get modal map for profit calculation
-    const rekapSheet = SS.getSheetByName(CONFIG.REKAP.name);
-    let modalMap = {};
-    if (rekapSheet) {
-      const rekapData = rekapSheet.getDataRange().getValues();
-      rekapData.shift();
-      rekapData.forEach(r => {
-        if (r[0]) modalMap[r[0]] = r[3];
-      });
-    }
-
-    let dailyStats = {};
-
-    data.forEach(row => {
-      if (!row[1]) return; // Skip empty dates
-      const dateObj = new Date(row[1]);
-      const dateStr = Utilities.formatDate(dateObj, "GMT+7", "yyyy-MM-dd");
-      const sku = row[2];
-      const qty = Number(row[6]) || 0;
-      const total = Number(row[7]) || 0;
-      const modal = modalMap[sku] || 0;
-      const laba = total - (modal * qty);
-
-      if (!dailyStats[dateStr]) {
-        dailyStats[dateStr] = { omzet: 0, laba: 0 };
-      }
-      dailyStats[dateStr].omzet += total;
-      dailyStats[dateStr].laba += laba;
-    });
-
-    // Convert to array and sort by date descending
-    return Object.keys(dailyStats).map(date => ({
-      tanggal: date,
-      omzet: dailyStats[date].omzet,
-      laba: dailyStats[date].laba
-    })).sort((a, b) => b.tanggal.localeCompare(a.tanggal));
-  } catch (e) {
-    Logger.log("Error in getDailyProfitStats: " + e.toString());
-    return [];
-  }
+    if (!daily[d]) daily[d] = { tanggal: d, omzet: 0, laba: 0 };
+    daily[d].omzet += total;
+    daily[d].laba += laba;
+  });
+  return Object.values(daily).sort((a,b) => b.tanggal.localeCompare(a.tanggal));
 }
 
-function processFishSale(payload) {
-  try {
-    const sheet = SS.getSheetByName(CONFIG.PENJUALAN_IKAN.name);
-    const timestamp = new Date();
-    const dateStr = Utilities.formatDate(timestamp, "GMT+7", "yyyy-MM-dd HH:mm:ss");
-    
-    const { jenisIkan, qtyKg, hargaJual, cogsKg } = payload;
-    const totalHarga = qtyKg * hargaJual;
-    const totalCogs = qtyKg * cogsKg;
-    const untung = totalHarga - totalCogs;
-
-    sheet.appendRow([
-      dateStr,
-      jenisIkan,
-      qtyKg,
-      hargaJual,
-      totalHarga,
-      cogsKg,
-      totalCogs,
-      untung
-    ]);
-
-    return { status: 'success' };
-  } catch (err) {
-    return { status: 'error', message: err.toString() };
-  }
+function processFishSale(d) {
+  const sheet = SS.getSheetByName(CONFIG.PENJUALAN_IKAN.name);
+  const total = d.qtyKg * d.hargaJual;
+  const totalCogs = d.qtyKg * d.cogsKg;
+  sheet.appendRow([new Date(), d.jenisIkan, d.qtyKg, d.hargaJual, total, d.cogsKg, totalCogs, total - totalCogs]);
+  return { status: 'success' };
 }
 
 function getFishProfitStats() {
-  try {
-    const sheet = SS.getSheetByName(CONFIG.PENJUALAN_IKAN.name);
-    if (!sheet) return [];
-    
-    const data = sheet.getDataRange().getValues();
-    if (data.length <= 1) return [];
-    data.shift();
-
-    let dailyStats = {};
-    data.forEach(row => {
-      if (!row[0]) return;
-      const dateObj = new Date(row[0]);
-      const dateStr = Utilities.formatDate(dateObj, "GMT+7", "yyyy-MM-dd");
-      const omzet = Number(row[4]) || 0;
-      const untung = Number(row[7]) || 0;
-
-      if (!dailyStats[dateStr]) {
-        dailyStats[dateStr] = { omzet: 0, laba: 0 };
-      }
-      dailyStats[dateStr].omzet += omzet;
-      dailyStats[dateStr].laba += untung;
-    });
-
-    return Object.keys(dailyStats).map(date => ({
-      tanggal: date,
-      omzet: dailyStats[date].omzet,
-      laba: dailyStats[date].laba
-    })).sort((a, b) => b.tanggal.localeCompare(a.tanggal));
-  } catch (e) {
-    return [];
-  }
+  const sheet = SS.getSheetByName(CONFIG.PENJUALAN_IKAN.name);
+  const data = sheet.getDataRange().getValues();
+  data.shift();
+  let daily = {};
+  data.forEach(row => {
+    const d = Utilities.formatDate(new Date(row[0]), "GMT+7", "yyyy-MM-dd");
+    if (!daily[d]) daily[d] = { tanggal: d, omzet: 0, laba: 0 };
+    daily[d].omzet += Number(row[4]);
+    daily[d].laba += Number(row[7]);
+  });
+  return Object.values(daily).sort((a,b) => b.tanggal.localeCompare(a.tanggal));
 }
 
-function processDigitalSale(payload) {
-  try {
-    const sheet = SS.getSheetByName(CONFIG.PRODUK_DIGITAL.name);
-    const timestamp = new Date();
-    const dateStr = Utilities.formatDate(timestamp, "GMT+7", "yyyy-MM-dd HH:mm:ss");
-    
-    const { nominal, hargaJual, catatan } = payload;
-    const keuntungan = Number(hargaJual) - (Number(nominal) || 0);
-
-    sheet.appendRow([
-      dateStr,
-      nominal || "",
-      hargaJual,
-      keuntungan,
-      catatan || ""
-    ]);
-
-    return { status: 'success' };
-  } catch (err) {
-    return { status: 'error', message: err.toString() };
-  }
+function processDigitalSale(d) {
+  const sheet = SS.getSheetByName(CONFIG.PRODUK_DIGITAL.name);
+  const untung = d.hargaJual - (Number(d.nominal) || 0);
+  sheet.appendRow([new Date(), d.nominal, d.hargaJual, untung, d.catatan]);
+  return { status: 'success' };
 }
 
 function getDigitalProfitStats() {
-  try {
-    const sheet = SS.getSheetByName(CONFIG.PRODUK_DIGITAL.name);
-    if (!sheet) return [];
-    
-    const data = sheet.getDataRange().getValues();
-    if (data.length <= 1) return [];
-    data.shift();
+  const sheet = SS.getSheetByName(CONFIG.PRODUK_DIGITAL.name);
+  const data = sheet.getDataRange().getValues();
+  data.shift();
+  let daily = {};
+  data.forEach(row => {
+    const d = Utilities.formatDate(new Date(row[0]), "GMT+7", "yyyy-MM-dd");
+    if (!daily[d]) daily[d] = { tanggal: d, omzet: 0, laba: 0 };
+    daily[d].omzet += Number(row[2]);
+    daily[d].laba += Number(row[3]);
+  });
+  return Object.values(daily).sort((a,b) => b.tanggal.localeCompare(a.tanggal));
+}
 
-    let dailyStats = {};
-    data.forEach(row => {
-      if (!row[0]) return;
-      const dateObj = new Date(row[0]);
-      const dateStr = Utilities.formatDate(dateObj, "GMT+7", "yyyy-MM-dd");
-      const omzet = Number(row[2]) || 0;
-      const untung = Number(row[3]) || 0;
-
-      if (!dailyStats[dateStr]) {
-        dailyStats[dateStr] = { omzet: 0, laba: 0 };
+function handleStockAction(p) {
+  const sheet = SS.getSheetByName(CONFIG.PRODUK.name);
+  const data = sheet.getDataRange().getValues();
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0] == p.sku) {
+      let total = Number(data[i][6]) || 0;
+      let sisa = Number(data[i][7]) || 0;
+      if (p.action === 'restock') {
+        total += Number(p.qty);
+        sisa += Number(p.qty);
+        if (p.modalBaru) sheet.getRange(i + 1, 4).setValue(p.modalBaru);
+      } else {
+        sisa = Number(p.qty);
       }
-      dailyStats[dateStr].omzet += omzet;
-      dailyStats[dateStr].laba += untung;
-    });
-
-    return Object.keys(dailyStats).map(date => ({
-      tanggal: date,
-      omzet: dailyStats[date].omzet,
-      laba: dailyStats[date].laba
-    })).sort((a, b) => b.tanggal.localeCompare(a.tanggal));
-  } catch (e) {
-    return [];
+      sheet.getRange(i + 1, 7).setValue(total);
+      sheet.getRange(i + 1, 8).setValue(sisa);
+      SS.getSheetByName(CONFIG.LOG_STOK.name).appendRow([new Date(), p.sku, data[i][2], p.action.toUpperCase(), p.qty, p.alasan, sisa]);
+      return { status: 'success' };
+    }
   }
+  return { status: 'error', message: 'SKU tidak ditemukan' };
 }
 
-function createResponse(data) {
-  return ContentService.createTextOutput(JSON.stringify(data))
-    .setMimeType(ContentService.MimeType.JSON);
-}
-
-// --- FUNGSI ANALISIS SUPPLIER ---
-
-function addSupplierTransaction(payload) {
+function addSupplierTransaction(d) {
   const sheet = SS.getSheetByName(CONFIG.ANALISIS_SUPPLIER.name);
-  const { tanggal, supplier, item, harga, qty, satuan, total, nama_standar, qty_konversi, unit_dasar } = payload;
-  
-  const hargaPerUnitDasar = harga / (qty_konversi || 1);
-  
-  sheet.appendRow([
-    tanggal,
-    supplier,
-    item,
-    harga,
-    qty,
-    satuan,
-    total,
-    nama_standar,
-    qty_konversi,
-    unit_dasar,
-    hargaPerUnitDasar
-  ]);
-  
+  const total = d.harga * d.qty;
+  const hargaPerUnit = total / (d.qty * d.qtyKonversi);
+  sheet.appendRow([d.tanggal, d.supplier, d.item, d.harga, d.qty, d.satuan, total, d.namaStandar, d.qtyKonversi, d.unitDasar, hargaPerUnit]);
   return { status: 'success' };
 }
 
 function getSupplierAnalysisData() {
   const sheet = SS.getSheetByName(CONFIG.ANALISIS_SUPPLIER.name);
   const data = sheet.getDataRange().getValues();
-  const headers = data.shift();
-  
-  return data.map(row => {
-    let obj = {};
-    headers.forEach((header, i) => {
-      const key = header.replace(/\s+/g, '_').toLowerCase();
-      obj[key] = row[i];
-    });
-    return obj;
+  data.shift();
+  let items = {};
+  data.forEach(row => {
+    const name = row[7];
+    if (!items[name]) items[name] = [];
+    items[name].push({ supplier: row[1], hargaPerUnit: row[10], unit: row[9], item: row[2] });
   });
-}
-
-// Fungsi Baru untuk Mencatat Log Stok
-function logStockChange(sku, nama, tipe, jumlah, alasan, stokAkhir) {
-  const sheet = SS.getSheetByName(CONFIG.LOG_STOK.name);
-  sheet.appendRow([new Date(), sku, nama, tipe, jumlah, alasan, stokAkhir]);
-}
-
-// Fungsi untuk Restock & Opname
-function handleStockAction(payload) {
-  const { action, sku, qty, modalBaru, alasan } = payload;
-  const sheetProduk = SS.getSheetByName(CONFIG.PRODUK.name);
-  const data = sheetProduk.getDataRange().getValues();
   
-  for (let i = 1; i < data.length; i++) {
-    if (data[i][0] == sku) {
-      let currentTotalStok = Number(data[i][6]) || 0;
-      let currentSisaStok = Number(data[i][7]) || 0;
-      let newSisaStok = currentSisaStok;
-      let newTotalStok = currentTotalStok;
-
-      if (action === 'restock') {
-        newTotalStok += Number(qty);
-        newSisaStok += Number(qty);
-        if (modalBaru) sheetProduk.getRange(i + 1, 4).setValue(modalBaru); // Update Harga Modal
-      } else if (action === 'opname') {
-        newSisaStok = Number(qty); // Set stok sesuai fisik
+  let result = [];
+  for (let name in items) {
+    let sorted = items[name].sort((a,b) => a.hargaPerUnit - b.hargaPerUnit);
+    sorted.forEach((s, i) => {
+      s.isRecommended = (i === 0);
+      if (i > 0) {
+        const diff = s.hargaPerUnit - sorted[0].hargaPerUnit;
+        s.diffText = `+${diff.toLocaleString('id-ID')} dari termurah`;
       }
-
-      sheetProduk.getRange(i + 1, 7).setValue(newTotalStok);
-      sheetProduk.getRange(i + 1, 8).setValue(newSisaStok);
-      
-      logStockChange(sku, data[i][2], action.toUpperCase(), qty, alasan, newSisaStok);
-      return { status: 'success' };
-    }
+      result.push(s);
+    });
   }
-  return { status: 'error', message: 'SKU tidak ditemukan' };
+  return result;
 }

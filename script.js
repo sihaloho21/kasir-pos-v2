@@ -10,22 +10,14 @@ let selectedCategory = 'Semua';
 
 // Inisialisasi
 document.addEventListener('DOMContentLoaded', () => {
-    // Set value in settings input
     const settingsInput = document.getElementById('settings-api-url');
     if (settingsInput) settingsInput.value = API_URL;
 
     fetchProducts();
     fetchDashboard();
-    fetchDailyProfit();
-    fetchFishProfit();
-    fetchDigitalProfit();
     
-    // Pastikan elemen ada sebelum menambah listener
     const searchInput = document.getElementById('search-input');
-    if (searchInput) {
-        // Gunakan debounce untuk pencarian agar tidak lag saat mengetik cepat
-        searchInput.addEventListener('input', debounce(filterProducts, 300));
-    }
+    if (searchInput) searchInput.addEventListener('input', debounce(filterProducts, 300));
     
     const clearCartBtn = document.getElementById('clear-cart');
     if (clearCartBtn) clearCartBtn.addEventListener('click', clearCart);
@@ -33,7 +25,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnBayar = document.getElementById('btn-bayar');
     if (btnBayar) btnBayar.addEventListener('click', processPayment);
 
-    // Supplier Analysis Listeners
     const supForm = document.getElementById('supplier-form');
     if (supForm) supForm.addEventListener('submit', handleSupplierSubmit);
     
@@ -42,24 +33,22 @@ document.addEventListener('DOMContentLoaded', () => {
         if (el) el.addEventListener('input', () => {
             const qty = parseFloat(document.getElementById('sup-qty').value) || 0;
             const harga = parseFloat(document.getElementById('sup-harga').value) || 0;
-            document.getElementById('sup-total').value = qty * harga;
+            const totalEl = document.getElementById('sup-total');
+            if (totalEl) totalEl.value = qty * harga;
         });
     });
 
-    // Fish POS Listeners
     ['fish-qty', 'fish-price', 'fish-cogs'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.addEventListener('input', updateFishPreview);
     });
 
-    // Digital POS Listeners
     ['digital-nominal', 'digital-price'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.addEventListener('input', updateDigitalPreview);
     });
 });
 
-// Helper Debounce untuk performa input
 function debounce(func, wait) {
     let timeout;
     return function executedFunction(...args) {
@@ -72,7 +61,6 @@ function debounce(func, wait) {
     };
 }
 
-// Fungsi Notifikasi Modal
 function showNotification(title, message, type = 'success') {
     const modal = document.getElementById('notification-modal');
     const content = document.getElementById('modal-content');
@@ -81,10 +69,10 @@ function showNotification(title, message, type = 'success') {
     const titleEl = document.getElementById('modal-title');
     const messageEl = document.getElementById('modal-message');
 
+    if (!modal || !content || !titleEl || !messageEl) return;
+
     titleEl.innerText = title;
     messageEl.innerText = message;
-
-    // Reset classes
     iconContainer.className = 'mx-auto flex items-center justify-center h-20 w-20 rounded-full mb-6';
     icon.className = 'fas text-4xl';
 
@@ -109,16 +97,12 @@ function showNotification(title, message, type = 'success') {
 function closeNotification() {
     const modal = document.getElementById('notification-modal');
     const content = document.getElementById('modal-content');
-    
+    if (!modal || !content) return;
     content.classList.remove('scale-100', 'opacity-100');
     content.classList.add('scale-95', 'opacity-0');
-    
-    setTimeout(() => {
-        modal.classList.add('hidden');
-    }, 200);
+    setTimeout(() => modal.classList.add('hidden'), 200);
 }
 
-// Fungsi Navigasi Halaman
 function showPage(pageId) {
     document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
     document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('bg-teal-700', 'active'));
@@ -126,89 +110,61 @@ function showPage(pageId) {
     const targetPage = document.getElementById('page-' + pageId);
     if (targetPage) targetPage.classList.remove('hidden');
     
-    // Menambah class active ke tombol yang diklik
-    if (window.event && window.event.currentTarget) {
-        window.event.currentTarget.classList.add('bg-teal-700');
+    if (window.event && window.event.currentTarget && window.event.currentTarget.classList.contains('nav-link')) {
+        window.event.currentTarget.classList.add('bg-teal-700', 'active');
     }
 
-    // Load reports if switching to report page
     if (pageId === 'report') {
         fetchDailyProfit();
         fetchFishProfit();
         fetchDigitalProfit();
     }
-
-    if (pageId === 'supplier') {
-        fetchSupplierAnalysis();
-    }
+    if (pageId === 'supplier') fetchSupplierAnalysis();
 }
 
-// Fungsi Pengaturan
 function saveSettings() {
     const settingsInput = document.getElementById('settings-api-url');
     if (!settingsInput) return;
-    
     const newUrl = settingsInput.value.trim();
     if (!newUrl) return alert('URL tidak boleh kosong!');
-    
     localStorage.setItem('pos_api_url', newUrl);
     API_URL = newUrl;
-    alert('Pengaturan disimpan! Aplikasi akan memuat ulang data.');
-    
-    // Refresh data
-    fetchProducts();
-    fetchDashboard();
-    fetchDailyProfit();
-    fetchFishProfit();
-    fetchDigitalProfit();
-    showPage('pos');
+    alert('Pengaturan disimpan!');
+    location.reload();
 }
 
 // --- DIGITAL POS LOGIC ---
 function updateDigitalPreview() {
     const nominal = parseFloat(document.getElementById('digital-nominal').value) || 0;
     const price = parseFloat(document.getElementById('digital-price').value) || 0;
-    const profit = price - nominal;
-    document.getElementById('preview-digital-profit').innerText = formatRupiah(profit);
+    const preview = document.getElementById('preview-digital-profit');
+    if (preview) preview.innerText = formatRupiah(price - nominal);
 }
 
 async function processDigitalSale() {
     const nominal = document.getElementById('digital-nominal').value;
     const hargaJual = parseFloat(document.getElementById('digital-price').value);
     const catatan = document.getElementById('digital-note').value;
-
-    if (isNaN(hargaJual)) {
-        return alert('Harga Jual wajib diisi!');
-    }
+    if (isNaN(hargaJual)) return alert('Harga Jual wajib diisi!');
 
     const btn = document.getElementById('btn-bayar-digital');
     try {
         btn.disabled = true;
         btn.innerText = 'MENYIMPAN...';
-
         const response = await fetch(API_URL, {
             method: 'POST',
-            body: JSON.stringify({
-                action: 'processDigitalSale',
-                nominal,
-                hargaJual,
-                catatan
-            })
+            body: JSON.stringify({ action: 'processDigitalSale', nominal, hargaJual, catatan })
         });
-
         const res = await response.json();
         if (res.status === 'success') {
             showNotification('Berhasil!', 'Transaksi Digital Berhasil Disimpan');
-            document.getElementById('digital-nominal').value = '';
-            document.getElementById('digital-price').value = '';
-            document.getElementById('digital-note').value = '';
+            ['digital-nominal', 'digital-price', 'digital-note'].forEach(id => document.getElementById(id).value = '');
             updateDigitalPreview();
             fetchDashboard();
         } else {
             showNotification('Gagal!', res.message, 'error');
         }
     } catch (e) {
-        console.error(e);
         showNotification('Kesalahan!', 'Terjadi kesalahan koneksi!', 'error');
     } finally {
         btn.disabled = false;
@@ -223,8 +179,10 @@ function updateFishPreview() {
     const cogs = parseFloat(document.getElementById('fish-cogs').value) || 0;
     const total = qty * price;
     const profit = total - (qty * cogs);
-    document.getElementById('preview-fish-total').innerText = formatRupiah(total);
-    document.getElementById('preview-fish-profit').innerText = formatRupiah(profit);
+    const pTotal = document.getElementById('preview-fish-total');
+    const pProfit = document.getElementById('preview-fish-profit');
+    if (pTotal) pTotal.innerText = formatRupiah(total);
+    if (pProfit) pProfit.innerText = formatRupiah(profit);
 }
 
 async function processFishSale() {
@@ -233,9 +191,7 @@ async function processFishSale() {
     const hargaJual = parseFloat(document.getElementById('fish-price').value);
     const cogsKg = parseFloat(document.getElementById('fish-cogs').value);
 
-    if (!jenisIkan || isNaN(qtyKg) || isNaN(hargaJual) || isNaN(cogsKg)) {
-        return alert('Harap isi semua data dengan benar!');
-    }
+    if (!jenisIkan || isNaN(qtyKg) || isNaN(hargaJual) || isNaN(cogsKg)) return alert('Harap isi semua data!');
 
     const btn = document.getElementById('btn-bayar-ikan');
     try {
@@ -248,9 +204,7 @@ async function processFishSale() {
         const res = await response.json();
         if (res.status === 'success') {
             showNotification('Berhasil!', 'Transaksi Ikan Berhasil Disimpan');
-            document.getElementById('fish-qty').value = '';
-            document.getElementById('fish-price').value = '';
-            document.getElementById('fish-cogs').value = '';
+            ['fish-qty', 'fish-price', 'fish-cogs'].forEach(id => document.getElementById(id).value = '');
             updateFishPreview();
             fetchDashboard();
         } else {
@@ -265,7 +219,6 @@ async function processFishSale() {
 }
 
 // --- REPORTING LOGIC ---
-
 async function fetchDailyProfit() {
     const tableBody = document.getElementById('daily-profit-table-body');
     if (!tableBody) return;
@@ -299,7 +252,7 @@ async function fetchDigitalProfit() {
 function renderDailyProfitTable(data, targetId) {
     const tableBody = document.getElementById(targetId);
     if (!tableBody) return;
-    tableBody.innerHTML = '';
+    tableBody.innerHTML = data.length ? '' : '<tr><td colspan="3" class="p-4 text-center text-gray-400">Tidak ada data</td></tr>';
     data.forEach(row => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
@@ -311,7 +264,6 @@ function renderDailyProfitTable(data, targetId) {
     });
 }
 
-// --- SUPPLIER ANALYSIS LOGIC ---
 async function fetchSupplierAnalysis() {
     const tableBody = document.getElementById('supplier-analysis-table-body');
     if (!tableBody) return;
@@ -327,13 +279,12 @@ function renderSupplierAnalysisTable(data) {
     if (!tableBody) return;
     tableBody.innerHTML = '';
     data.forEach(row => {
-        const isRecommended = row.isRecommended;
         const tr = document.createElement('tr');
-        tr.className = isRecommended ? 'bg-green-50' : '';
+        if (row.isRecommended) tr.className = 'bg-green-50';
         tr.innerHTML = `
             <td class="px-4 py-3 text-xs text-gray-600">${row.item}</td>
             <td class="px-4 py-3 text-xs text-gray-600">${row.supplier}</td>
-            <td class="px-4 py-3 text-xs font-bold ${isRecommended ? 'text-green-600' : 'text-gray-400 line-through'}">${formatRupiah(row.hargaPerUnit)} / ${row.unit}</td>
+            <td class="px-4 py-3 text-xs font-bold ${row.isRecommended ? 'text-green-600' : 'text-gray-400 line-through'}">${formatRupiah(row.hargaPerUnit)} / ${row.unit}</td>
             <td class="px-4 py-3 text-xs text-gray-500">${row.diffText || '-'}</td>
         `;
         tableBody.appendChild(tr);
@@ -345,6 +296,7 @@ async function handleSupplierSubmit(e) {
     const btn = e.target.querySelector('button[type="submit"]');
     const formData = {
         action: 'addSupplierTransaction',
+        tanggal: document.getElementById('sup-tanggal').value,
         supplier: document.getElementById('sup-nama').value,
         item: document.getElementById('sup-item').value,
         harga: parseFloat(document.getElementById('sup-harga').value),
@@ -373,11 +325,11 @@ async function handleSupplierSubmit(e) {
     }
 }
 
-// --- STOCK LOGIC ---
-async function handleStockAction(action) {
+async function processStockAction(action) {
     const sku = document.getElementById(action === 'restock' ? 'stock-sku' : 'opname-sku').value;
     const qty = parseFloat(document.getElementById(action === 'restock' ? 'stock-qty' : 'opname-qty').value);
-    const reason = document.getElementById(action === 'restock' ? 'stock-reason' : 'opname-reason').value;
+    const modalBaru = action === 'restock' ? parseFloat(document.getElementById('stock-modal').value) : null;
+    const alasan = document.getElementById(action === 'restock' ? 'stock-alasan' : 'opname-alasan').value;
 
     if (!sku || isNaN(qty)) return alert('Harap isi SKU dan Jumlah!');
 
@@ -387,13 +339,15 @@ async function handleStockAction(action) {
         btn.innerText = 'MEMPROSES...';
         const response = await fetch(API_URL, {
             method: 'POST',
-            body: JSON.stringify({ action, sku, qty, reason })
+            body: JSON.stringify({ action, sku, qty, modalBaru, alasan })
         });
         const res = await response.json();
         if (res.status === 'success') {
             showNotification('Berhasil!', 'Data Stok Berhasil Diperbarui');
-            document.getElementById(action === 'restock' ? 'stock-qty' : 'opname-qty').value = '';
-            document.getElementById(action === 'restock' ? 'stock-reason' : 'opname-reason').value = '';
+            ['stock-qty', 'stock-modal', 'stock-alasan', 'opname-qty', 'opname-alasan'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = '';
+            });
             fetchProducts();
         } else {
             showNotification('Gagal!', res.message, 'error');
@@ -402,12 +356,11 @@ async function handleStockAction(action) {
         showNotification('Kesalahan!', 'Gagal memperbarui stok!', 'error');
     } finally {
         btn.disabled = false;
-        btn.innerText = action === 'restock' ? 'TAMBAH STOK' : 'SIMPAN OPNAME';
+        btn.innerText = action === 'restock' ? 'Simpan Stok Masuk' : 'Update Stok Fisik';
     }
 }
 
 // --- CORE POS LOGIC ---
-
 async function fetchProducts() {
     try {
         const response = await fetch(`${API_URL}?action=getProducts`);
@@ -422,12 +375,8 @@ async function fetchDashboard() {
         const response = await fetch(`${API_URL}?action=getDashboardStats`);
         const stats = await response.json();
         
-        // Update POS Dashboard Mini
         const omzetEl = document.getElementById('today-omzet');
-        if (omzetEl && stats) {
-            const omzetValue = stats.daily ? stats.daily.omzet : (stats.todayOmzet || 0);
-            omzetEl.innerText = formatRupiah(omzetValue);
-        }
+        if (omzetEl && stats.segments) omzetEl.innerText = formatRupiah(stats.segments.warung.omzet);
 
         if (stats.segments) {
             const sWarung = document.getElementById('summary-laba-warung');
@@ -435,17 +384,15 @@ async function fetchDashboard() {
             const sDigital = document.getElementById('summary-laba-digital');
             const sTotal = document.getElementById('summary-total-laba');
             
-            const labaWarung = stats.segments.warung?.laba || 0;
-            const labaFish = stats.segments.fish?.laba || 0;
-            const labaDigital = stats.segments.digital?.laba || 0;
-            const totalLaba = labaWarung + labaFish + labaDigital;
+            const lW = stats.segments.warung?.laba || 0;
+            const lF = stats.segments.fish?.laba || 0;
+            const lD = stats.segments.digital?.laba || 0;
 
-            if (sWarung) sWarung.innerText = formatRupiah(labaWarung);
-            if (sFish) sFish.innerText = formatRupiah(labaFish);
-            if (sDigital) sDigital.innerText = formatRupiah(labaDigital);
-            if (sTotal) sTotal.innerText = formatRupiah(totalLaba);
+            if (sWarung) sWarung.innerText = formatRupiah(lW);
+            if (sFish) sFish.innerText = formatRupiah(lF);
+            if (sDigital) sDigital.innerText = formatRupiah(lD);
+            if (sTotal) sTotal.innerText = formatRupiah(lW + lF + lD);
         }
-
         renderDashboard(stats);
     } catch (error) { console.error(error); }
 }
@@ -456,8 +403,8 @@ function renderDashboard(stats) {
     if (!container || !stats) return;
 
     if (summaryContainer) {
-        const totalOmzet = (stats.daily?.omzet || 0) + (stats.segments?.fish?.omzet || 0) + (stats.segments?.digital?.omzet || 0);
-        const totalLaba = (stats.daily?.laba || 0) + (stats.segments?.fish?.laba || 0) + (stats.segments?.digital?.laba || 0);
+        const totalOmzet = (stats.segments?.warung?.omzet || 0) + (stats.segments?.fish?.omzet || 0) + (stats.segments?.digital?.omzet || 0);
+        const totalLaba = (stats.segments?.warung?.laba || 0) + (stats.segments?.fish?.laba || 0) + (stats.segments?.digital?.laba || 0);
         
         summaryContainer.innerHTML = `
             <div class="bg-gradient-to-br from-teal-600 to-teal-800 rounded-2xl p-8 text-white shadow-lg mb-8">
@@ -465,16 +412,11 @@ function renderDashboard(stats) {
                     <div class="text-center md:text-left">
                         <p class="text-teal-100 text-xs font-bold uppercase tracking-widest mb-1">Total Omzet Hari Ini</p>
                         <h3 class="text-4xl font-black">${formatRupiah(totalOmzet)}</h3>
-                        <p class="text-teal-100 text-sm mt-1">Total Omzet Gabungan</p>
                     </div>
                     <div class="h-px md:h-16 w-full md:w-px bg-white/20"></div>
                     <div class="text-center md:text-left">
                         <p class="text-indigo-100 text-xs font-bold uppercase tracking-widest mb-1">Total Laba Bersih</p>
                         <h3 class="text-4xl font-black text-yellow-300">${formatRupiah(totalLaba)}</h3>
-                        <p class="text-teal-100 text-sm mt-1">Keuntungan Semua Segmen</p>
-                    </div>
-                    <div class="hidden lg:block">
-                        <i class="fas fa-chart-line text-6xl text-white/20"></i>
                     </div>
                 </div>
             </div>
@@ -483,10 +425,6 @@ function renderDashboard(stats) {
 
     const createCard = (title, data, color) => {
         if (!data) return '';
-        const omzet = data.omzet || 0;
-        const laba = data.laba || 0;
-        const topNama = data.top ? data.top.nama : '-';
-        const topQty = data.top ? data.top.qty : 0;
         return `
             <div class="bg-white p-5 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition">
                 <div class="flex items-center mb-3">
@@ -495,23 +433,19 @@ function renderDashboard(stats) {
                     </div>
                     <h4 class="text-sm font-bold text-gray-700 uppercase">${title}</h4>
                 </div>
-                <p class="text-2xl font-black text-gray-800">${formatRupiah(omzet)}</p>
+                <p class="text-2xl font-black text-gray-800">${formatRupiah(data.omzet)}</p>
                 <div class="flex justify-between items-center mt-2">
                     <span class="text-xs text-gray-400">Laba Bersih</span>
-                    <span class="text-sm font-bold text-${color}-600">${formatRupiah(laba)}</span>
-                </div>
-                <div class="mt-4 pt-3 border-t border-gray-50">
-                    <p class="text-[10px] text-gray-400 uppercase font-bold mb-1">Produk Terlaris</p>
-                    <p class="text-xs text-gray-600 font-medium">${topNama} <span class="text-gray-400">(${topQty})</span></p>
+                    <span class="text-sm font-bold text-${color}-600">${formatRupiah(data.laba)}</span>
                 </div>
             </div>
         `;
     };
 
     container.innerHTML = `
-        ${createCard('Warung', stats.segments ? stats.segments.warung : null, 'teal')}
-        ${createCard('Ikan', stats.segments ? stats.segments.fish : null, 'blue')}
-        ${createCard('Digital', stats.segments ? stats.segments.digital : null, 'purple')}
+        ${createCard('Warung', stats.segments?.warung, 'teal')}
+        ${createCard('Ikan', stats.segments?.fish, 'blue')}
+        ${createCard('Digital', stats.segments?.digital, 'purple')}
     `;
 }
 
@@ -532,99 +466,62 @@ function renderCategories(data) {
 function renderProducts(data) {
     const grid = document.getElementById('product-grid');
     if (!grid || !data) return;
-    
-    // Gunakan DocumentFragment untuk performa DOM yang lebih baik
     const fragment = document.createDocumentFragment();
-    
-    // Limit to maximum 16 products for initial display/filter
-    const displayData = data.slice(0, 16);
-    
-    displayData.forEach(p => {
+    data.slice(0, 20).forEach(p => {
         const sisaStok = p.SISA_STOK || 0;
-        const harga = p.Perkiraan_Harga_Rp || 0;
-        const nama = p.Nama_Produk || 'Tanpa Nama';
         const isLow = sisaStok < 5;
-        const initial = nama.substring(0, 2).toUpperCase();
-        
         const card = document.createElement('div');
         card.className = `product-card bg-white p-4 rounded-xl border ${isLow ? 'border-red-500 bg-red-50' : 'border-gray-100'} flex flex-col items-center text-center cursor-pointer hover:shadow-md transition`;
         card.onclick = () => addToCart(p);
         card.innerHTML = `
-            <div class="w-10 h-10 ${isLow ? 'bg-red-500' : 'bg-teal-600'} text-white flex items-center justify-center rounded-lg font-bold mb-2">${initial}</div>
-            <h3 class="text-xs font-medium text-gray-700 h-8 overflow-hidden">${nama}</h3>
-            <p class="text-teal-600 font-bold text-sm">${formatRupiah(harga)}</p>
-            <p class="text-[10px] ${isLow ? 'text-red-600 font-bold' : 'text-gray-400'}">Stok: ${sisaStok} ${isLow ? '!' : ''}</p>
+            <div class="w-10 h-10 ${isLow ? 'bg-red-500' : 'bg-teal-600'} text-white flex items-center justify-center rounded-lg font-bold mb-2">${(p.Nama_Produk || '??').substring(0, 2).toUpperCase()}</div>
+            <h3 class="text-xs font-medium text-gray-700 h-8 overflow-hidden">${p.Nama_Produk || 'Tanpa Nama'}</h3>
+            <p class="text-teal-600 font-bold text-sm">${formatRupiah(p.Perkiraan_Harga_Rp)}</p>
+            <p class="text-[10px] ${isLow ? 'text-red-600 font-bold' : 'text-gray-400'}">Stok: ${sisaStok}</p>
         `;
         fragment.appendChild(card);
     });
-    
     grid.innerHTML = '';
     grid.appendChild(fragment);
-    
-    // Update dropdowns secara asinkron agar tidak memblokir render utama
     setTimeout(() => updateStockDropdowns(data), 0);
 }
 
 function updateStockDropdowns(data) {
-    if (!data) return;
-    const selects = ['stock-sku', 'opname-sku'];
-    selects.forEach(id => {
+    ['stock-sku', 'opname-sku'].forEach(id => {
         const el = document.getElementById(id);
         if (!el) return;
-        
         let options = '<option value="">Pilih Produk...</option>';
-        data.forEach(p => {
-            const sku = p.SKU || '';
-            const nama = p.Nama_Produk || 'Tanpa Nama';
-            const sisaStok = p.SISA_STOK || 0;
-            options += `<option value="${sku}">${nama} (Stok: ${sisaStok})</option>`;
-        });
+        data.forEach(p => options += `<option value="${p.SKU}">${p.Nama_Produk} (Stok: ${p.SISA_STOK || 0})</option>`);
         el.innerHTML = options;
     });
 }
 
-function addToCart(product) {
-    if (!product || !product.SKU) return;
-    const existing = cart.find(item => item.SKU === product.SKU);
-    const harga = product.Perkiraan_Harga_Rp || 0;
-    const nama = product.Nama_Produk || 'Tanpa Nama';
-    const satuan = product.Satuan || '';
+function addToCart(p) {
+    if (!p || !p.SKU) return;
+    const existing = cart.find(item => item.SKU === p.SKU);
     if (existing) {
         existing.Qty += 1;
         existing.Total = existing.Qty * existing.Harga_Satuan;
     } else {
-        cart.push({ SKU: product.SKU, Nama_Produk: nama, Satuan: satuan, Harga_Satuan: harga, Qty: 1, Total: harga });
+        cart.push({ SKU: p.SKU, Nama_Produk: p.Nama_Produk, Satuan: p.Satuan, Harga_Satuan: p.Perkiraan_Harga_Rp || 0, Qty: 1, Total: p.Perkiraan_Harga_Rp || 0 });
     }
     renderCart();
-    
-    // Bersihkan input pencarian dan reset tampilan produk
     const searchInput = document.getElementById('search-input');
-    if (searchInput) {
-        searchInput.value = '';
-        // Reset tampilan produk ke kategori yang dipilih atau semua produk
-        filterProducts();
-        // Fokus kembali ke input pencarian
-        searchInput.focus();
-    }
+    if (searchInput) { searchInput.value = ''; filterProducts(); searchInput.focus(); }
 }
 
 function renderCart() {
     const container = document.getElementById('cart-items');
     const totalEl = document.getElementById('cart-total');
     if (!container || !totalEl) return;
-    
     const fragment = document.createDocumentFragment();
     let total = 0;
-    
     cart.forEach((item, index) => {
         total += item.Total;
         const div = document.createElement('div');
         div.className = "flex justify-between items-center border-b border-gray-50 pb-2";
         div.innerHTML = `
-            <div class="flex-1">
-                <h4 class="text-xs font-bold">${item.Nama_Produk}</h4>
-                <p class="text-[10px] text-gray-400">${item.Qty} x ${formatRupiah(item.Harga_Satuan)}</p>
-            </div>
+            <div class="flex-1"><h4 class="text-xs font-bold">${item.Nama_Produk}</h4><p class="text-[10px] text-gray-400">${item.Qty} x ${formatRupiah(item.Harga_Satuan)}</p></div>
             <div class="flex items-center space-x-2">
                 <button onclick="updateQty(${index}, -1)" class="text-gray-400 hover:text-red-500"><i class="fas fa-minus-circle"></i></button>
                 <span class="text-xs font-bold">${item.Qty}</span>
@@ -633,13 +530,8 @@ function renderCart() {
         `;
         fragment.appendChild(div);
     });
-    
-    container.innerHTML = '';
-    if (cart.length === 0) {
-        container.innerHTML = '<p class="text-center text-gray-400 text-xs mt-10">Kosong</p>';
-    } else {
-        container.appendChild(fragment);
-    }
+    container.innerHTML = cart.length ? '' : '<p class="text-center text-gray-400 text-xs mt-10">Kosong</p>';
+    if (cart.length) container.appendChild(fragment);
     totalEl.innerText = formatRupiah(total);
 }
 
@@ -656,7 +548,6 @@ function clearCart() { if (confirm('Bersihkan keranjang?')) { cart = []; renderC
 async function processPayment() {
     if (cart.length === 0) return alert('Keranjang kosong!');
     const btn = document.getElementById('btn-bayar');
-    if (!btn) return;
     try {
         btn.disabled = true;
         btn.innerText = 'PROSES...';
@@ -664,16 +555,9 @@ async function processPayment() {
         const res = await response.json();
         if (res.status === 'success') {
             showNotification('Berhasil!', 'Transaksi Berhasil Disimpan');
-            cart = [];
-            renderCart();
-            fetchProducts();
-            fetchDashboard();
-        } else { 
-            showNotification('Gagal!', res.message, 'error'); 
-        }
-    } catch (e) { 
-        showNotification('Kesalahan!', 'Gagal memproses pembayaran!', 'error'); 
-    }
+            cart = []; renderCart(); fetchProducts(); fetchDashboard();
+        } else { showNotification('Gagal!', res.message, 'error'); }
+    } catch (e) { showNotification('Kesalahan!', 'Gagal memproses pembayaran!', 'error'); }
     finally { btn.disabled = false; btn.innerText = 'BAYAR'; }
 }
 
@@ -682,11 +566,8 @@ function filterProducts() {
     if (!searchInput) return;
     const search = searchInput.value.toLowerCase();
     const filtered = products.filter(p => {
-        const nama = (p.Nama_Produk || '').toLowerCase();
-        const sku = (p.SKU || '').toString().toLowerCase();
-        const kategori = p.Kategori || '';
-        const matchesSearch = nama.includes(search) || sku.includes(search);
-        const matchesCategory = selectedCategory === 'Semua' || kategori === selectedCategory;
+        const matchesSearch = (p.Nama_Produk || '').toLowerCase().includes(search) || (p.SKU || '').toString().toLowerCase().includes(search);
+        const matchesCategory = selectedCategory === 'Semua' || p.Kategori === selectedCategory;
         return matchesSearch && matchesCategory;
     });
     renderProducts(filtered);
