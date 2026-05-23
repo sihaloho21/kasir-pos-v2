@@ -144,6 +144,13 @@ function updateDigitalPreview() {
     if (preview) preview.innerText = formatRupiah(price - nominal);
 }
 
+function setDigitalPrice(price) {
+    const priceInput = document.getElementById('digital-price');
+    if (!priceInput) return;
+    priceInput.value = price;
+    updateDigitalPreview();
+}
+
 async function processDigitalSale() {
     const nominal = document.getElementById('digital-nominal').value;
     const hargaJual = parseFloat(document.getElementById('digital-price').value);
