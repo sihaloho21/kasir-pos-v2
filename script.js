@@ -491,8 +491,8 @@ function renderProducts(data) {
     if (!grid || !data) return;
     const fragment = document.createDocumentFragment();
     const sortedProducts = [...data].sort((a, b) => {
-        const soldDiff = (Number(b.Qty_Terjual) || 0) - (Number(a.Qty_Terjual) || 0);
-        if (soldDiff !== 0) return soldDiff;
+        const todaySoldDiff = (Number(b.Qty_Terjual) || 0) - (Number(a.Qty_Terjual) || 0);
+        if (todaySoldDiff !== 0) return todaySoldDiff;
         return (a.Nama_Produk || '').localeCompare(b.Nama_Produk || '', 'id');
     });
 

@@ -87,11 +87,18 @@ function getProductsData() {
   const data = sheet.getDataRange().getValues();
   const headers = data.shift();
 
-  const rekapSheet = SS.getSheetByName(CONFIG.REKAP.name);
-  const rekapData = rekapSheet ? rekapSheet.getDataRange().getValues() : [];
-  if (rekapData.length) rekapData.shift();
-  const soldQtyMap = {};
-  rekapData.forEach(row => soldQtyMap[row[0]] = Number(row[5]) || 0);
+  const todayStr = Utilities.formatDate(new Date(), "GMT+7", "yyyy-MM-dd");
+  const penjualanSheet = SS.getSheetByName(CONFIG.PENJUALAN.name);
+  const penjualanData = penjualanSheet ? penjualanSheet.getDataRange().getValues() : [];
+  if (penjualanData.length) penjualanData.shift();
+  const todaySoldQtyMap = {};
+  penjualanData.forEach(row => {
+    const soldDate = Utilities.formatDate(new Date(row[1]), "GMT+7", "yyyy-MM-dd");
+    if (soldDate !== todayStr) return;
+
+    const sku = row[2];
+    todaySoldQtyMap[sku] = (todaySoldQtyMap[sku] || 0) + (Number(row[6]) || 0);
+  });
 
   return data.map(row => {
     let obj = {};
@@ -99,7 +106,7 @@ function getProductsData() {
       const key = header.replace(/\s+/g, '_').replace(/[()]/g, '');
       obj[key] = row[i];
     });
-    obj.Qty_Terjual = soldQtyMap[obj.SKU] || 0;
+    obj.Qty_Terjual = todaySoldQtyMap[obj.SKU] || 0;
     return obj;
   });
 }
