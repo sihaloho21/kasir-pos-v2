@@ -507,7 +507,7 @@ function addToCart(p) {
     }
     renderCart();
     const searchInput = document.getElementById('search-input');
-    if (searchInput) { searchInput.value = ''; filterProducts(); searchInput.focus(); }
+    if (searchInput) searchInput.focus();
 }
 
 function renderCart() {
