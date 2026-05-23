@@ -355,8 +355,11 @@ async function processStockAction(action) {
     const alasan = document.getElementById(action === 'restock' ? 'stock-alasan' : 'opname-alasan').value;
 
     if (!sku || isNaN(qty)) return alert('Harap isi SKU dan Jumlah!');
+    if (action === 'restock' && qty <= 0) return alert('Jumlah stok masuk harus lebih dari 0!');
+    if (action === 'opname' && qty < 0) return alert('Stok fisik tidak boleh negatif!');
 
     const btn = document.getElementById(action === 'restock' ? 'btn-restock' : 'btn-opname');
+    if (!btn) return;
     try {
         btn.disabled = true;
         btn.innerText = 'MEMPROSES...';
@@ -390,6 +393,7 @@ async function fetchProducts() {
         products = await response.json();
         renderCategories(products);
         renderProducts(products);
+        updateStockDropdowns(products);
     } catch (error) { console.error(error); }
 }
 
@@ -512,7 +516,6 @@ function renderProducts(data) {
     });
     grid.innerHTML = '';
     grid.appendChild(fragment);
-    setTimeout(() => updateStockDropdowns(sortedProducts), 0);
 }
 
 function updateStockDropdowns(data) {

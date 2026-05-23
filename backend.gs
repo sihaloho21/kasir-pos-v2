@@ -302,20 +302,25 @@ function getDigitalProfitStats() {
 function handleStockAction(p) {
   const sheet = SS.getSheetByName(CONFIG.PRODUK.name);
   const data = sheet.getDataRange().getValues();
+  const qty = Number(p.qty);
+  if (!p.sku || isNaN(qty)) return { status: 'error', message: 'SKU dan jumlah wajib diisi' };
+  if (p.action === 'restock' && qty <= 0) return { status: 'error', message: 'Jumlah stok masuk harus lebih dari 0' };
+  if (p.action === 'opname' && qty < 0) return { status: 'error', message: 'Stok fisik tidak boleh negatif' };
+
   for (let i = 1; i < data.length; i++) {
     if (data[i][0] == p.sku) {
       let total = Number(data[i][6]) || 0;
       let sisa = Number(data[i][7]) || 0;
       if (p.action === 'restock') {
-        total += Number(p.qty);
-        sisa += Number(p.qty);
+        total += qty;
+        sisa += qty;
         if (p.modalBaru) sheet.getRange(i + 1, 4).setValue(p.modalBaru);
       } else {
-        sisa = Number(p.qty);
+        sisa = qty;
       }
-      sheet.getRange(i + 1, 7).setValue(total);
+      if (p.action === 'restock') sheet.getRange(i + 1, 7).setValue(total);
       sheet.getRange(i + 1, 8).setValue(sisa);
-      SS.getSheetByName(CONFIG.LOG_STOK.name).appendRow([new Date(), p.sku, data[i][2], p.action.toUpperCase(), p.qty, p.alasan, sisa]);
+      SS.getSheetByName(CONFIG.LOG_STOK.name).appendRow([new Date(), p.sku, data[i][2], p.action.toUpperCase(), qty, p.alasan, sisa]);
       return { status: 'success' };
     }
   }

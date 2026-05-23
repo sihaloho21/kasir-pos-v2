@@ -203,7 +203,7 @@
                         <input type="number" id="stock-qty" placeholder="Jumlah Masuk" class="w-full p-2 border rounded-lg">
                         <input type="number" id="stock-modal" placeholder="Harga Modal Baru (Opsional)" class="w-full p-2 border rounded-lg">
                         <input type="text" id="stock-alasan" placeholder="Alasan (Contoh: Beli dari Suplier A)" class="w-full p-2 border rounded-lg">
-                        <button onclick="processStockAction('restock')" class="w-full bg-teal-600 text-white py-2 rounded-lg font-bold">Simpan Stok Masuk</button>
+                        <button id="btn-restock" onclick="processStockAction('restock')" class="w-full bg-teal-600 text-white py-2 rounded-lg font-bold">Simpan Stok Masuk</button>
                     </div>
                 </div>
                 <!-- Form Opname -->
@@ -213,7 +213,7 @@
                         <select id="opname-sku" class="w-full p-2 border rounded-lg"></select>
                         <input type="number" id="opname-qty" placeholder="Stok Fisik Sebenarnya" class="w-full p-2 border rounded-lg">
                         <input type="text" id="opname-alasan" placeholder="Alasan (Contoh: Barang Rusak / Selisih)" class="w-full p-2 border rounded-lg">
-                        <button onclick="processStockAction('opname')" class="w-full bg-orange-500 text-white py-2 rounded-lg font-bold">Update Stok Fisik</button>
+                        <button id="btn-opname" onclick="processStockAction('opname')" class="w-full bg-orange-500 text-white py-2 rounded-lg font-bold">Update Stok Fisik</button>
                     </div>
                 </div>
             </div>
