@@ -7,6 +7,11 @@ let API_URL = localStorage.getItem('pos_api_url') || DEFAULT_API_URL;
 let products = [];
 let cart = [];
 let selectedCategory = 'Semua';
+let reportProfitData = {
+    warung: null,
+    fish: null,
+    digital: null
+};
 
 // Inisialisasi
 document.addEventListener('DOMContentLoaded', () => {
@@ -15,6 +20,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     fetchProducts();
     fetchDashboard();
+
+    document.addEventListener('keydown', handleNotificationShortcut);
     
     const searchInput = document.getElementById('search-input');
     if (searchInput) searchInput.addEventListener('input', debounce(filterProducts, 300));
@@ -24,19 +31,6 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const btnBayar = document.getElementById('btn-bayar');
     if (btnBayar) btnBayar.addEventListener('click', processPayment);
-
-    const supForm = document.getElementById('supplier-form');
-    if (supForm) supForm.addEventListener('submit', handleSupplierSubmit);
-    
-    ['sup-qty', 'sup-harga'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.addEventListener('input', () => {
-            const qty = parseFloat(document.getElementById('sup-qty').value) || 0;
-            const harga = parseFloat(document.getElementById('sup-harga').value) || 0;
-            const totalEl = document.getElementById('sup-total');
-            if (totalEl) totalEl.value = qty * harga;
-        });
-    });
 
     ['fish-qty', 'fish-price', 'fish-cogs'].forEach(id => {
         const el = document.getElementById(id);
@@ -103,6 +97,15 @@ function closeNotification() {
     setTimeout(() => modal.classList.add('hidden'), 200);
 }
 
+function handleNotificationShortcut(event) {
+    if (event.key !== 'Escape') return;
+
+    const modal = document.getElementById('notification-modal');
+    if (!modal || modal.classList.contains('hidden')) return;
+
+    closeNotification();
+}
+
 function showPage(pageId) {
     document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
     document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('bg-teal-700', 'active'));
@@ -115,11 +118,11 @@ function showPage(pageId) {
     }
 
     if (pageId === 'report') {
+        renderReportProfitSummary();
         fetchDailyProfit();
         fetchFishProfit();
         fetchDigitalProfit();
     }
-    if (pageId === 'supplier') fetchSupplierAnalysis();
 }
 
 function saveSettings() {
@@ -225,7 +228,11 @@ async function fetchDailyProfit() {
     try {
         const response = await fetch(`${API_URL}?action=getDailyProfitStats`);
         const data = await response.json();
-        if (Array.isArray(data)) renderDailyProfitTable(data, 'daily-profit-table-body');
+        if (Array.isArray(data)) {
+            reportProfitData.warung = data;
+            renderDailyProfitTable(data, 'daily-profit-table-body');
+            renderReportProfitSummary();
+        }
     } catch (error) { console.error(error); }
 }
 
@@ -235,7 +242,11 @@ async function fetchFishProfit() {
     try {
         const response = await fetch(`${API_URL}?action=getFishProfitStats`);
         const data = await response.json();
-        if (Array.isArray(data)) renderDailyProfitTable(data, 'fish-profit-table-body');
+        if (Array.isArray(data)) {
+            reportProfitData.fish = data;
+            renderDailyProfitTable(data, 'fish-profit-table-body');
+            renderReportProfitSummary();
+        }
     } catch (error) { console.error(error); }
 }
 
@@ -245,8 +256,81 @@ async function fetchDigitalProfit() {
     try {
         const response = await fetch(`${API_URL}?action=getDigitalProfitStats`);
         const data = await response.json();
-        if (Array.isArray(data)) renderDailyProfitTable(data, 'digital-profit-table-body');
+        if (Array.isArray(data)) {
+            reportProfitData.digital = data;
+            renderDailyProfitTable(data, 'digital-profit-table-body');
+            renderReportProfitSummary();
+        }
     } catch (error) { console.error(error); }
+}
+
+function getCurrentMonthKey() {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function getCurrentMonthLabel() {
+    return new Intl.DateTimeFormat('id-ID', { month: 'long', year: 'numeric' }).format(new Date());
+}
+
+function summarizeMonthlyProfit(data) {
+    const monthKey = getCurrentMonthKey();
+    if (!Array.isArray(data)) return { omzet: 0, laba: 0, isLoaded: false };
+
+    return data
+        .filter(row => (row.tanggal || '').startsWith(monthKey))
+        .reduce((summary, row) => {
+            summary.omzet += Number(row.omzet) || 0;
+            summary.laba += Number(row.laba) || 0;
+            return summary;
+        }, { omzet: 0, laba: 0, isLoaded: true });
+}
+
+function renderReportProfitSummary() {
+    const container = document.getElementById('report-profit-summary');
+    const monthLabel = document.getElementById('report-month-label');
+    if (!container) return;
+
+    if (monthLabel) monthLabel.innerText = `Ringkasan ${getCurrentMonthLabel()}`;
+
+    const summaries = {
+        warung: summarizeMonthlyProfit(reportProfitData.warung),
+        fish: summarizeMonthlyProfit(reportProfitData.fish),
+        digital: summarizeMonthlyProfit(reportProfitData.digital)
+    };
+    const isTotalLoaded = summaries.warung.isLoaded && summaries.fish.isLoaded && summaries.digital.isLoaded;
+    const totalLaba = summaries.warung.laba + summaries.fish.laba + summaries.digital.laba;
+
+    const createSummaryCard = (title, icon, color, summary) => `
+        <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+            <div class="flex items-center justify-between mb-4">
+                <div class="w-10 h-10 rounded-lg ${color.bg} ${color.text} flex items-center justify-center">
+                    <i class="fas ${icon}"></i>
+                </div>
+                <span class="text-[10px] font-bold uppercase tracking-wide text-gray-400">Laba Bulan Ini</span>
+            </div>
+            <p class="text-xs font-bold text-gray-500 mb-1">${title}</p>
+            <p class="text-2xl font-black text-gray-900">${summary.isLoaded ? formatRupiah(summary.laba) : 'Memuat...'}</p>
+            <p class="text-[10px] text-gray-400 mt-2">Omzet: ${summary.isLoaded ? formatRupiah(summary.omzet) : '-'}</p>
+        </div>
+    `;
+
+    container.innerHTML = `
+        ${createSummaryCard('Warung', 'fa-store', { bg: 'bg-teal-50', text: 'text-teal-600' }, summaries.warung)}
+        ${createSummaryCard('Ikan', 'fa-fish', { bg: 'bg-blue-50', text: 'text-blue-600' }, summaries.fish)}
+        ${createSummaryCard('Digital', 'fa-mobile-alt', { bg: 'bg-purple-50', text: 'text-purple-600' }, summaries.digital)}
+        <div class="bg-gray-900 rounded-xl shadow-sm p-5 text-white">
+            <div class="flex items-center justify-between mb-4">
+                <div class="w-10 h-10 rounded-lg bg-white/10 text-yellow-300 flex items-center justify-center">
+                    <i class="fas fa-coins"></i>
+                </div>
+                <span class="text-[10px] font-bold uppercase tracking-wide text-gray-300">Warung + Ikan + Digital</span>
+            </div>
+            <p class="text-xs font-bold text-gray-300 mb-1">Total Keseluruhan Laba</p>
+            <p class="text-2xl font-black text-yellow-300">${isTotalLoaded ? formatRupiah(totalLaba) : 'Memuat...'}</p>
+            <p class="text-[10px] text-gray-400 mt-2">${getCurrentMonthLabel()}</p>
+        </div>
+    `;
 }
 
 function renderDailyProfitTable(data, targetId) {
@@ -262,67 +346,6 @@ function renderDailyProfitTable(data, targetId) {
         `;
         tableBody.appendChild(tr);
     });
-}
-
-async function fetchSupplierAnalysis() {
-    const tableBody = document.getElementById('supplier-analysis-table-body');
-    if (!tableBody) return;
-    try {
-        const response = await fetch(`${API_URL}?action=getSupplierAnalysis`);
-        const data = await response.json();
-        if (Array.isArray(data)) renderSupplierAnalysisTable(data);
-    } catch (error) { console.error(error); }
-}
-
-function renderSupplierAnalysisTable(data) {
-    const tableBody = document.getElementById('supplier-analysis-table-body');
-    if (!tableBody) return;
-    tableBody.innerHTML = '';
-    data.forEach(row => {
-        const tr = document.createElement('tr');
-        if (row.isRecommended) tr.className = 'bg-green-50';
-        tr.innerHTML = `
-            <td class="px-4 py-3 text-xs text-gray-600">${row.item}</td>
-            <td class="px-4 py-3 text-xs text-gray-600">${row.supplier}</td>
-            <td class="px-4 py-3 text-xs font-bold ${row.isRecommended ? 'text-green-600' : 'text-gray-400 line-through'}">${formatRupiah(row.hargaPerUnit)} / ${row.unit}</td>
-            <td class="px-4 py-3 text-xs text-gray-500">${row.diffText || '-'}</td>
-        `;
-        tableBody.appendChild(tr);
-    });
-}
-
-async function handleSupplierSubmit(e) {
-    e.preventDefault();
-    const btn = e.target.querySelector('button[type="submit"]');
-    const formData = {
-        action: 'addSupplierTransaction',
-        tanggal: document.getElementById('sup-tanggal').value,
-        supplier: document.getElementById('sup-nama').value,
-        item: document.getElementById('sup-item').value,
-        harga: parseFloat(document.getElementById('sup-harga').value),
-        qty: parseFloat(document.getElementById('sup-qty').value),
-        satuan: document.getElementById('sup-satuan').value,
-        namaStandar: document.getElementById('sup-standar').value,
-        qtyKonversi: parseFloat(document.getElementById('sup-konversi').value),
-        unitDasar: document.getElementById('sup-unit-dasar').value
-    };
-
-    try {
-        btn.disabled = true;
-        btn.innerText = 'MENYIMPAN...';
-        const response = await fetch(API_URL, { method: 'POST', body: JSON.stringify(formData) });
-        const res = await response.json();
-        if (res.status === 'success') {
-            showNotification('Berhasil!', 'Data Supplier Berhasil Disimpan');
-            e.target.reset();
-            fetchSupplierAnalysis();
-        }
-    } catch (error) {
-        showNotification('Gagal!', 'Gagal menyimpan data supplier', 'error');
-    } finally {
-        btn.disabled = false;
-        btn.innerText = 'SIMPAN DATA BELANJA';
-    }
 }
 
 async function processStockAction(action) {
@@ -467,7 +490,13 @@ function renderProducts(data) {
     const grid = document.getElementById('product-grid');
     if (!grid || !data) return;
     const fragment = document.createDocumentFragment();
-    data.slice(0, 20).forEach(p => {
+    const sortedProducts = [...data].sort((a, b) => {
+        const soldDiff = (Number(b.Qty_Terjual) || 0) - (Number(a.Qty_Terjual) || 0);
+        if (soldDiff !== 0) return soldDiff;
+        return (a.Nama_Produk || '').localeCompare(b.Nama_Produk || '', 'id');
+    });
+
+    sortedProducts.slice(0, 20).forEach(p => {
         const sisaStok = p.SISA_STOK || 0;
         const isLow = sisaStok < 5;
         const card = document.createElement('div');
@@ -483,7 +512,7 @@ function renderProducts(data) {
     });
     grid.innerHTML = '';
     grid.appendChild(fragment);
-    setTimeout(() => updateStockDropdowns(data), 0);
+    setTimeout(() => updateStockDropdowns(sortedProducts), 0);
 }
 
 function updateStockDropdowns(data) {

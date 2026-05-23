@@ -30,10 +30,6 @@ const CONFIG = {
   PRODUK_DIGITAL: {
     name: 'Produk_Digital',
     headers: ['TANGGAL', 'NOMINAL', 'HARGA JUAL', 'KEUNTUNGAN', 'CATATAN']
-  },
-  ANALISIS_SUPPLIER: {
-    name: 'SUPLIER_BELANJA',
-    headers: ['Tanggal', 'Supplier', 'Item', 'Harga', 'Qty', 'Satuan', 'Total', 'Nama Standar', 'Qty Konversi', 'Unit Dasar', 'Harga per Unit Dasar']
   }
 };
 
@@ -62,7 +58,6 @@ function doGet(e) {
     if (action === 'getDailyProfitStats') return createResponse(getDailyProfitStats());
     if (action === 'getFishProfitStats') return createResponse(getFishProfitStats());
     if (action === 'getDigitalProfitStats') return createResponse(getDigitalProfitStats());
-    if (action === 'getSupplierAnalysis') return createResponse(getSupplierAnalysisData());
     return createResponse({ status: 'error', message: 'Action not found' });
   } catch (err) {
     return createResponse({ status: 'error', message: err.toString() });
@@ -75,7 +70,6 @@ function doPost(e) {
     if (data.action === 'restock' || data.action === 'opname') return createResponse(handleStockAction(data));
     if (data.action === 'processFishSale') return createResponse(processFishSale(data));
     if (data.action === 'processDigitalSale') return createResponse(processDigitalSale(data));
-    if (data.action === 'addSupplierTransaction') return createResponse(addSupplierTransaction(data));
     return createResponse(processTransaction(data));
   } catch (err) {
     return createResponse({ status: 'error', message: err.toString() });
@@ -92,12 +86,20 @@ function getProductsData() {
   const sheet = SS.getSheetByName(CONFIG.PRODUK.name);
   const data = sheet.getDataRange().getValues();
   const headers = data.shift();
+
+  const rekapSheet = SS.getSheetByName(CONFIG.REKAP.name);
+  const rekapData = rekapSheet ? rekapSheet.getDataRange().getValues() : [];
+  if (rekapData.length) rekapData.shift();
+  const soldQtyMap = {};
+  rekapData.forEach(row => soldQtyMap[row[0]] = Number(row[5]) || 0);
+
   return data.map(row => {
     let obj = {};
     headers.forEach((header, i) => {
       const key = header.replace(/\s+/g, '_').replace(/[()]/g, '');
       obj[key] = row[i];
     });
+    obj.Qty_Terjual = soldQtyMap[obj.SKU] || 0;
     return obj;
   });
 }
@@ -313,36 +315,3 @@ function handleStockAction(p) {
   return { status: 'error', message: 'SKU tidak ditemukan' };
 }
 
-function addSupplierTransaction(d) {
-  const sheet = SS.getSheetByName(CONFIG.ANALISIS_SUPPLIER.name);
-  const total = d.harga * d.qty;
-  const hargaPerUnit = total / (d.qty * d.qtyKonversi);
-  sheet.appendRow([d.tanggal, d.supplier, d.item, d.harga, d.qty, d.satuan, total, d.namaStandar, d.qtyKonversi, d.unitDasar, hargaPerUnit]);
-  return { status: 'success' };
-}
-
-function getSupplierAnalysisData() {
-  const sheet = SS.getSheetByName(CONFIG.ANALISIS_SUPPLIER.name);
-  const data = sheet.getDataRange().getValues();
-  data.shift();
-  let items = {};
-  data.forEach(row => {
-    const name = row[7];
-    if (!items[name]) items[name] = [];
-    items[name].push({ supplier: row[1], hargaPerUnit: row[10], unit: row[9], item: row[2] });
-  });
-  
-  let result = [];
-  for (let name in items) {
-    let sorted = items[name].sort((a,b) => a.hargaPerUnit - b.hargaPerUnit);
-    sorted.forEach((s, i) => {
-      s.isRecommended = (i === 0);
-      if (i > 0) {
-        const diff = s.hargaPerUnit - sorted[0].hargaPerUnit;
-        s.diffText = `+${diff.toLocaleString('id-ID')} dari termurah`;
-      }
-      result.push(s);
-    });
-  }
-  return result;
-}
