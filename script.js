@@ -293,6 +293,63 @@ function summarizeMonthlyProfit(data) {
         }, { omzet: 0, laba: 0, isLoaded: true });
 }
 
+function getMonthLabel(monthKey) {
+    const [year, month] = monthKey.split('-').map(Number);
+    if (!year || !month) return monthKey;
+    return new Intl.DateTimeFormat('id-ID', { month: 'long', year: 'numeric' }).format(new Date(year, month - 1, 1));
+}
+
+function addMonthlyIncomeRows(monthlyMap, data, segmentKey) {
+    if (!Array.isArray(data)) return;
+
+    data.forEach(row => {
+        const tanggal = row.tanggal || '';
+        const monthKey = tanggal.slice(0, 7);
+        if (!/^\d{4}-\d{2}$/.test(monthKey)) return;
+
+        if (!monthlyMap[monthKey]) {
+            monthlyMap[monthKey] = { monthKey, warung: 0, fish: 0, digital: 0 };
+        }
+
+        monthlyMap[monthKey][segmentKey] += Number(row.omzet) || 0;
+    });
+}
+
+function renderMonthlyIncomeTable() {
+    const tableBody = document.getElementById('monthly-income-table-body');
+    if (!tableBody) return;
+
+    const isLoaded = Array.isArray(reportProfitData.warung) && Array.isArray(reportProfitData.fish) && Array.isArray(reportProfitData.digital);
+    if (!isLoaded) {
+        tableBody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-gray-400">Memuat...</td></tr>';
+        return;
+    }
+
+    const monthlyMap = {};
+    addMonthlyIncomeRows(monthlyMap, reportProfitData.warung, 'warung');
+    addMonthlyIncomeRows(monthlyMap, reportProfitData.fish, 'fish');
+    addMonthlyIncomeRows(monthlyMap, reportProfitData.digital, 'digital');
+
+    const rows = Object.values(monthlyMap).sort((a, b) => b.monthKey.localeCompare(a.monthKey));
+    if (!rows.length) {
+        tableBody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-gray-400">Tidak ada data</td></tr>';
+        return;
+    }
+
+    tableBody.innerHTML = rows.map(row => {
+        const total = row.warung + row.fish + row.digital;
+        return `
+            <tr class="border-b border-gray-50 last:border-b-0">
+                <td class="px-3 py-3 font-bold text-gray-800 whitespace-nowrap">${getMonthLabel(row.monthKey)}</td>
+                <td class="px-3 py-3 font-bold text-teal-700">${formatRupiah(row.warung)}</td>
+                <td class="px-3 py-3 font-bold text-blue-700">${formatRupiah(row.fish)}</td>
+                <td class="px-3 py-3 font-bold text-purple-700">${formatRupiah(row.digital)}</td>
+                <td class="px-3 py-3 font-black text-gray-900">${formatRupiah(total)}</td>
+            </tr>
+        `;
+    }).join('');
+}
+
 function renderReportProfitSummary() {
     const container = document.getElementById('report-profit-summary');
     const monthLabel = document.getElementById('report-month-label');
@@ -338,6 +395,8 @@ function renderReportProfitSummary() {
             <p class="text-[10px] text-gray-400 mt-2">${getCurrentMonthLabel()}</p>
         </div>
     `;
+
+    renderMonthlyIncomeTable();
 }
 
 function renderDailyProfitTable(data, targetId) {

@@ -242,6 +242,29 @@
                 <!-- Ringkasan laba bulanan diisi via script.js -->
             </div>
 
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-8">
+                <div class="p-4 border-b bg-gray-50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <h3 class="font-bold text-gray-800 text-sm"><i class="fas fa-table mr-2"></i>Laporan Pemasukan Bulanan</h3>
+                    <span class="text-[10px] font-bold uppercase tracking-wide text-gray-400">Warung + Ikan + Digital</span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-gray-50 text-gray-500 text-[10px] uppercase tracking-wider">
+                                <th class="p-3 border-b">Bulan</th>
+                                <th class="p-3 border-b text-teal-700">Warung</th>
+                                <th class="p-3 border-b text-blue-700">Ikan</th>
+                                <th class="p-3 border-b text-purple-700">Digital</th>
+                                <th class="p-3 border-b text-gray-900">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody id="monthly-income-table-body" class="text-xs text-gray-700">
+                            <tr><td colspan="5" class="p-4 text-center text-gray-400">Memuat...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <!-- Tabel Laba Bersih Harian (Produk Warung) -->
                 <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
