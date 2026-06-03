@@ -311,7 +311,7 @@ function addMonthlyIncomeRows(monthlyMap, data, segmentKey) {
             monthlyMap[monthKey] = { monthKey, warung: 0, fish: 0, digital: 0 };
         }
 
-        monthlyMap[monthKey][segmentKey] += Number(row.omzet) || 0;
+        monthlyMap[monthKey][segmentKey] += Number(row.laba) || 0;
     });
 }
 
