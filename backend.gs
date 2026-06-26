@@ -46,7 +46,11 @@ function setupSheets() {
       // Periksa jika ada header baru yang perlu ditambahkan (misal: Harga Modal di Penjualan)
       const currentHeaders = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
       if (currentHeaders.length < sheetConfig.headers.length) {
-        sheet.getRange(1, 1, 1, sheetConfig.headers.length).setValues([sheetConfig.headers]).setFontWeight("bold").setBackground("#f3f3f3");
+        // Jika kolom baru perlu ditambahkan di akhir
+        const newHeaders = sheetConfig.headers.slice(currentHeaders.length);
+        if (newHeaders.length > 0) {
+          sheet.getRange(1, currentHeaders.length + 1, 1, newHeaders.length).setValues([newHeaders]).setFontWeight("bold").setBackground("#f3f3f3");
+        }
       }
     }
   });
@@ -54,12 +58,16 @@ function setupSheets() {
   // --- Migrasi Data untuk sheet Penjualan ---
   const penjualanSheet = SS.getSheetByName(CONFIG.PENJUALAN.name);
   if (penjualanSheet) {
-    const penjualanData = penjualanSheet.getDataRange().getValues();
-    if (penjualanData.length > 1) {
+    const lastRow = penjualanSheet.getLastRow();
+    const lastCol = penjualanSheet.getLastColumn();
+    if (lastRow > 1) {
+      const range = penjualanSheet.getRange(1, 1, lastRow, lastCol);
+      const penjualanData = range.getValues();
       const headers = penjualanData[0];
       const modalPriceColIndex = headers.indexOf('Harga Modal (Rp)');
+      const skuColIndex = headers.indexOf('SKU');
 
-      if (modalPriceColIndex !== -1) {
+      if (modalPriceColIndex !== -1 && skuColIndex !== -1) {
         const produkSheet = SS.getSheetByName(CONFIG.PRODUK.name);
         const produkData = produkSheet.getDataRange().getValues();
         const currentModalMap = {};
@@ -68,20 +76,24 @@ function setupSheets() {
         }
 
         let updatedRows = [];
+        let hasChanges = false;
         for (let i = 1; i < penjualanData.length; i++) {
           const row = penjualanData[i];
-          const sku = row[2];
+          const sku = row[skuColIndex];
           const existingModal = row[modalPriceColIndex];
 
-          // Jika kolom Harga Modal (Rp) kosong, isi dengan harga modal saat ini
-          if (existingModal === "" || existingModal === null || existingModal === undefined) {
-            row[modalPriceColIndex] = currentModalMap[sku] || 0;
+          // Jika kolom Harga Modal (Rp) kosong atau nol, coba isi dengan harga modal saat ini
+          if (existingModal === "" || existingModal === null || existingModal === undefined || Number(existingModal) === 0) {
+            const modalValue = currentModalMap[sku] || 0;
+            if (modalValue > 0) {
+              row[modalPriceColIndex] = modalValue;
+              hasChanges = true;
+            }
           }
           updatedRows.push(row);
         }
         
-        // Tulis kembali hanya baris data (mulai dari baris 2)
-        if (updatedRows.length > 0) {
+        if (hasChanges && updatedRows.length > 0) {
           penjualanSheet.getRange(2, 1, updatedRows.length, headers.length).setValues(updatedRows);
         }
       }
@@ -133,7 +145,9 @@ function getProductsData() {
   if (penjualanData.length) penjualanData.shift();
   const todaySoldQtyMap = {};
   penjualanData.forEach(row => {
-    const soldDate = Utilities.formatDate(new Date(row[1]), "GMT+7", "yyyy-MM-dd");
+    const tglRaw = row[1];
+    if (!tglRaw) return;
+    const soldDate = Utilities.formatDate(new Date(tglRaw), "GMT+7", "yyyy-MM-dd");
     if (soldDate !== todayStr) return;
 
     const sku = row[2];
@@ -252,7 +266,7 @@ function getDashboardStats() {
       const nama = row[3];
       const qty = Number(row[6]) || 0;
       const total = Number(row[7]) || 0;
-      // Ambil modal dari kolom ke-9 (index 8). Jika kosong, anggap 0.
+      // Ambil modal dari kolom ke-9 (index 8). Jika kosong atau nol, anggap 0.
       const modal = Number(row[8]) || 0;
       const laba = total - (modal * qty);
 
@@ -296,7 +310,7 @@ function getDailyProfitStats() {
     const sku = row[2];
     const qty = Number(row[6]) || 0;
     const total = Number(row[7]) || 0;
-    // Ambil modal dari kolom ke-9 (index 8). Jika kosong, anggap 0.
+    // Ambil modal dari kolom ke-9 (index 8). Jika kosong atau nol, anggap 0.
     const modal = Number(row[8]) || 0;
     const laba = total - (modal * qty);
     
