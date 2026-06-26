@@ -414,43 +414,6 @@ function renderDailyProfitTable(data, targetId) {
     });
 }
 
-async function processStockAction(action) {
-    const sku = document.getElementById(action === 'restock' ? 'stock-sku' : 'opname-sku').value;
-    const qty = parseFloat(document.getElementById(action === 'restock' ? 'stock-qty' : 'opname-qty').value);
-    const modalBaru = action === 'restock' ? parseFloat(document.getElementById('stock-modal').value) : null;
-    const alasan = document.getElementById(action === 'restock' ? 'stock-alasan' : 'opname-alasan').value;
-
-    if (!sku || isNaN(qty)) return alert('Harap isi SKU dan Jumlah!');
-    if (action === 'restock' && qty <= 0) return alert('Jumlah stok masuk harus lebih dari 0!');
-    if (action === 'opname' && qty < 0) return alert('Stok fisik tidak boleh negatif!');
-
-    const btn = document.getElementById(action === 'restock' ? 'btn-restock' : 'btn-opname');
-    if (!btn) return;
-    try {
-        btn.disabled = true;
-        btn.innerText = 'MEMPROSES...';
-        const response = await fetch(API_URL, {
-            method: 'POST',
-            body: JSON.stringify({ action, sku, qty, modalBaru, alasan })
-        });
-        const res = await response.json();
-        if (res.status === 'success') {
-            showNotification('Berhasil!', 'Data Stok Berhasil Diperbarui');
-            ['stock-qty', 'stock-modal', 'stock-alasan', 'opname-qty', 'opname-alasan'].forEach(id => {
-                const el = document.getElementById(id);
-                if (el) el.value = '';
-            });
-            fetchProducts();
-        } else {
-            showNotification('Gagal!', res.message, 'error');
-        }
-    } catch (e) {
-        showNotification('Kesalahan!', 'Gagal memperbarui stok!', 'error');
-    } finally {
-        btn.disabled = false;
-        btn.innerText = action === 'restock' ? 'Simpan Stok Masuk' : 'Update Stok Fisik';
-    }
-}
 
 // --- CORE POS LOGIC ---
 async function fetchProducts() {
@@ -459,7 +422,6 @@ async function fetchProducts() {
         products = await response.json();
         renderCategories(products);
         renderProducts(products);
-        updateStockDropdowns(products);
     } catch (error) { console.error(error); }
 }
 
@@ -584,15 +546,6 @@ function renderProducts(data) {
     grid.appendChild(fragment);
 }
 
-function updateStockDropdowns(data) {
-    ['stock-sku', 'opname-sku'].forEach(id => {
-        const el = document.getElementById(id);
-        if (!el) return;
-        let options = '<option value="">Pilih Produk...</option>';
-        data.forEach(p => options += `<option value="${p.SKU}">${p.Nama_Produk} (Stok: ${p.SISA_STOK || 0})</option>`);
-        el.innerHTML = options;
-    });
-}
 
 function addToCart(p) {
     if (!p || !p.SKU) return;

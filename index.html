@@ -29,10 +29,7 @@
                 <i class="fas fa-mobile-alt w-8 text-center"></i>
                 <span class="hidden md:block ml-2">Produk Digital</span>
             </button>
-            <button onclick="showPage('stock')" class="nav-link w-full flex items-center p-4 hover:bg-teal-700 transition">
-                <i class="fas fa-boxes w-8 text-center"></i>
-                <span class="hidden md:block ml-2">Kelola Stok</span>
-            </button>
+
             <button onclick="showPage('report')" class="nav-link w-full flex items-center p-4 hover:bg-teal-700 transition">
                 <i class="fas fa-chart-line w-8 text-center"></i>
                 <span class="hidden md:block ml-2">Laporan</span>
@@ -203,33 +200,7 @@
             </div>
         </div>
 
-        <!-- Halaman KELOLA STOK -->
-        <div id="page-stock" class="page flex-1 p-6 overflow-y-auto hidden">
-            <h2 class="text-2xl font-bold mb-6">Manajemen Stok</h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <!-- Form Restock -->
-                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                    <h3 class="font-bold text-teal-700 mb-4"><i class="fas fa-plus-circle mr-2"></i>Stok Masuk (Restock)</h3>
-                    <div class="space-y-4">
-                        <select id="stock-sku" class="w-full p-2 border rounded-lg"></select>
-                        <input type="number" id="stock-qty" placeholder="Jumlah Masuk" class="w-full p-2 border rounded-lg">
-                        <input type="number" id="stock-modal" placeholder="Harga Modal Baru (Opsional)" class="w-full p-2 border rounded-lg">
-                        <input type="text" id="stock-alasan" placeholder="Alasan (Contoh: Beli dari Suplier A)" class="w-full p-2 border rounded-lg">
-                        <button id="btn-restock" onclick="processStockAction('restock')" class="w-full bg-teal-600 text-white py-2 rounded-lg font-bold">Simpan Stok Masuk</button>
-                    </div>
-                </div>
-                <!-- Form Opname -->
-                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                    <h3 class="font-bold text-orange-600 mb-4"><i class="fas fa-sync mr-2"></i>Penyesuaian (Stock Opname)</h3>
-                    <div class="space-y-4">
-                        <select id="opname-sku" class="w-full p-2 border rounded-lg"></select>
-                        <input type="number" id="opname-qty" placeholder="Stok Fisik Sebenarnya" class="w-full p-2 border rounded-lg">
-                        <input type="text" id="opname-alasan" placeholder="Alasan (Contoh: Barang Rusak / Selisih)" class="w-full p-2 border rounded-lg">
-                        <button id="btn-opname" onclick="processStockAction('opname')" class="w-full bg-orange-500 text-white py-2 rounded-lg font-bold">Update Stok Fisik</button>
-                    </div>
-                </div>
-            </div>
-        </div>
+
 
         <!-- Halaman LAPORAN (Sudah ada di versi sebelumnya) -->
         <div id="page-report" class="page flex-1 p-6 overflow-y-auto hidden">

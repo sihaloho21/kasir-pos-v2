@@ -19,10 +19,7 @@ const CONFIG = {
     name: 'Rekap Produk',
     headers: ['SKU', 'Nama Produk', 'Satuan', 'Harga Modal (Rp)', 'Harga Jual (Rp)', 'Qty Terjual', 'Omzet (Rp)', 'HPP (Rp)', 'Laba Kotor (Rp)']
   },
-  LOG_STOK: {
-    name: 'Log_Stok',
-    headers: ['Tanggal', 'SKU', 'Nama Produk', 'Tipe', 'Jumlah', 'Alasan', 'Stok Akhir']
-  },
+
   PENJUALAN_IKAN: {
     name: 'Penjualan_Ikan',
     headers: ['Tanggal Terjual', 'Jenis Ikan', 'Jumlah Terjual (kg)', 'Harga Jual per Kg', 'Total Harga Jual', 'COGS per Kg (Avg Beli)', 'Total COGS', 'Total Keuntungan']
@@ -67,7 +64,6 @@ function doGet(e) {
 function doPost(e) {
   try {
     const data = JSON.parse(e.postData.contents);
-    if (data.action === 'restock' || data.action === 'opname') return createResponse(handleStockAction(data));
     if (data.action === 'processFishSale') return createResponse(processFishSale(data));
     if (data.action === 'processDigitalSale') return createResponse(processDigitalSale(data));
     return createResponse(processTransaction(data));
@@ -299,31 +295,5 @@ function getDigitalProfitStats() {
   return Object.values(daily).sort((a,b) => b.tanggal.localeCompare(a.tanggal));
 }
 
-function handleStockAction(p) {
-  const sheet = SS.getSheetByName(CONFIG.PRODUK.name);
-  const data = sheet.getDataRange().getValues();
-  const qty = Number(p.qty);
-  if (!p.sku || isNaN(qty)) return { status: 'error', message: 'SKU dan jumlah wajib diisi' };
-  if (p.action === 'restock' && qty <= 0) return { status: 'error', message: 'Jumlah stok masuk harus lebih dari 0' };
-  if (p.action === 'opname' && qty < 0) return { status: 'error', message: 'Stok fisik tidak boleh negatif' };
 
-  for (let i = 1; i < data.length; i++) {
-    if (data[i][0] == p.sku) {
-      let total = Number(data[i][6]) || 0;
-      let sisa = Number(data[i][7]) || 0;
-      if (p.action === 'restock') {
-        total += qty;
-        sisa += qty;
-        if (p.modalBaru) sheet.getRange(i + 1, 4).setValue(p.modalBaru);
-      } else {
-        sisa = qty;
-      }
-      if (p.action === 'restock') sheet.getRange(i + 1, 7).setValue(total);
-      sheet.getRange(i + 1, 8).setValue(sisa);
-      SS.getSheetByName(CONFIG.LOG_STOK.name).appendRow([new Date(), p.sku, data[i][2], p.action.toUpperCase(), qty, p.alasan, sisa]);
-      return { status: 'success' };
-    }
-  }
-  return { status: 'error', message: 'SKU tidak ditemukan' };
-}
 
