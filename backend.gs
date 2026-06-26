@@ -13,7 +13,7 @@ const CONFIG = {
   },
   PENJUALAN: {
     name: 'Penjualan',
-    headers: ['ID Transaksi', 'Tanggal', 'SKU', 'Nama Produk', 'Satuan', 'Harga Satuan (Rp)', 'Qty', 'Total (Rp)']
+    headers: ['ID Transaksi', 'Tanggal', 'SKU', 'Nama Produk', 'Satuan', 'Harga Satuan (Rp)', 'Qty', 'Total (Rp)', 'Harga Modal (Rp)']
   },
   REKAP: {
     name: 'Rekap Produk',
@@ -42,6 +42,12 @@ function setupSheets() {
       sheet = SS.insertSheet(sheetConfig.name);
       sheet.appendRow(sheetConfig.headers);
       sheet.getRange(1, 1, 1, sheetConfig.headers.length).setFontWeight("bold").setBackground("#f3f3f3");
+    } else {
+      // Periksa jika ada header baru yang perlu ditambahkan (misal: Harga Modal di Penjualan)
+      const currentHeaders = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+      if (currentHeaders.length < sheetConfig.headers.length) {
+        sheet.getRange(1, 1, 1, sheetConfig.headers.length).setValues([sheetConfig.headers]).setFontWeight("bold").setBackground("#f3f3f3");
+      }
     }
   });
   return "Setup Selesai!";
@@ -117,10 +123,20 @@ function processTransaction(payload) {
   const dateStr = Utilities.formatDate(timestamp, "GMT+7", "yyyy-MM-dd HH:mm:ss");
   const trxId = "TRX-" + Utilities.formatDate(timestamp, "GMT+7", "yyyyMMdd") + "-" + Math.floor(1000 + Math.random() * 9000);
 
+  // Ambil data produk untuk mendapatkan harga modal saat ini
+  const produkSheet = SS.getSheetByName(CONFIG.PRODUK.name);
+  const produkData = produkSheet.getDataRange().getValues();
+  const modalMap = {};
+  for (let i = 1; i < produkData.length; i++) {
+    modalMap[produkData[i][0]] = produkData[i][3]; // SKU -> Harga Modal (Rp)
+  }
+
   items.forEach(item => {
-    sheetPenjualan.appendRow([trxId, dateStr, item.SKU, item.Nama_Produk, item.Satuan, item.Harga_Satuan, item.Qty, item.Total]);
+    const currentModal = modalMap[item.SKU] || 0;
+    // Append row: ID, Tgl, SKU, Nama, Satuan, Harga Jual, Qty, Total, HARGA MODAL (Baru)
+    sheetPenjualan.appendRow([trxId, dateStr, item.SKU, item.Nama_Produk, item.Satuan, item.Harga_Satuan, item.Qty, item.Total, currentModal]);
     updateStock(item.SKU, item.Qty);
-    updateRekap(item);
+    updateRekap(item, currentModal);
   });
 
   return { status: 'success', trxId: trxId };
@@ -138,7 +154,7 @@ function updateStock(sku, qtySold) {
   }
 }
 
-function updateRekap(item) {
+function updateRekap(item, manualModal) {
   const sheet = SS.getSheetByName(CONFIG.REKAP.name);
   const data = sheet.getDataRange().getValues();
   let found = false;
@@ -148,7 +164,8 @@ function updateRekap(item) {
       const currentQty = Number(data[i][5]) || 0;
       const currentOmzet = Number(data[i][6]) || 0;
       const currentHPP = Number(data[i][7]) || 0;
-      const modal = Number(data[i][3]) || 0;
+      // Gunakan modal saat transaksi jika ada
+      const modal = manualModal !== undefined ? manualModal : (Number(data[i][3]) || 0);
       
       const newQty = currentQty + item.Qty;
       const newOmzet = currentOmzet + item.Total;
@@ -164,16 +181,18 @@ function updateRekap(item) {
   }
   
   if (!found) {
-    const produkData = SS.getSheetByName(CONFIG.PRODUK.name).getDataRange().getValues();
-    let modal = 0;
-    for(let j=1; j<produkData.length; j++) {
-      if(produkData[j][0] == item.SKU) {
-        modal = produkData[j][3];
-        break;
+    let modal = manualModal;
+    if (modal === undefined) {
+      const produkData = SS.getSheetByName(CONFIG.PRODUK.name).getDataRange().getValues();
+      for(let j=1; j<produkData.length; j++) {
+        if(produkData[j][0] == item.SKU) {
+          modal = produkData[j][3];
+          break;
+        }
       }
     }
-    const hpp = modal * item.Qty;
-    sheet.appendRow([item.SKU, item.Nama_Produk, item.Satuan, modal, item.Harga_Satuan, item.Qty, item.Total, hpp, item.Total - hpp]);
+    const hpp = (modal || 0) * item.Qty;
+    sheet.appendRow([item.SKU, item.Nama_Produk, item.Satuan, modal || 0, item.Harga_Satuan, item.Qty, item.Total, hpp, item.Total - hpp]);
   }
 }
 
@@ -187,8 +206,8 @@ function getDashboardStats() {
   
   const rekapData = SS.getSheetByName(CONFIG.REKAP.name).getDataRange().getValues();
   rekapData.shift();
-  let modalMap = {};
-  rekapData.forEach(r => modalMap[r[0]] = r[3]);
+  let currentModalMap = {};
+  rekapData.forEach(r => currentModalMap[r[0]] = r[3]);
 
   let stats = { daily: { omzet: 0, laba: 0, items: {} } };
 
@@ -199,7 +218,8 @@ function getDashboardStats() {
       const nama = row[3];
       const qty = Number(row[6]);
       const total = Number(row[7]);
-      const modal = modalMap[sku] || 0;
+      // Ambil modal dari kolom ke-9 (index 8) jika ada, jika tidak fallback ke modal sekarang
+      const modal = row.length > 8 && row[8] !== "" ? Number(row[8]) : (currentModalMap[sku] || 0);
       const laba = total - (modal * qty);
 
       stats.daily.omzet += total;
@@ -236,15 +256,18 @@ function getDailyProfitStats() {
   
   const rekapData = SS.getSheetByName(CONFIG.REKAP.name).getDataRange().getValues();
   rekapData.shift();
-  let modalMap = {};
-  rekapData.forEach(r => modalMap[r[0]] = r[3]);
+  let currentModalMap = {};
+  rekapData.forEach(r => currentModalMap[r[0]] = r[3]);
 
   let daily = {};
   data.forEach(row => {
     const d = Utilities.formatDate(new Date(row[1]), "GMT+7", "yyyy-MM-dd");
+    const sku = row[2];
     const qty = Number(row[6]);
     const total = Number(row[7]);
-    const laba = total - ((modalMap[row[2]] || 0) * qty);
+    // Ambil modal dari kolom ke-9 (index 8) jika ada, jika tidak fallback ke modal sekarang
+    const modal = row.length > 8 && row[8] !== "" ? Number(row[8]) : (currentModalMap[sku] || 0);
+    const laba = total - (modal * qty);
     
     if (!daily[d]) daily[d] = { tanggal: d, omzet: 0, laba: 0 };
     daily[d].omzet += total;
@@ -323,6 +346,3 @@ function updateProductPrice(data) {
   }
   return { status: 'error', message: 'Produk tidak ditemukan' };
 }
-
-
-
