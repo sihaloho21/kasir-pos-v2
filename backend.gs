@@ -55,11 +55,11 @@ function setupSheets() {
   const penjualanSheet = SS.getSheetByName(CONFIG.PENJUALAN.name);
   if (penjualanSheet) {
     const penjualanData = penjualanSheet.getDataRange().getValues();
-    if (penjualanData.length > 1) { // Ada data selain header
+    if (penjualanData.length > 1) {
       const headers = penjualanData[0];
       const modalPriceColIndex = headers.indexOf('Harga Modal (Rp)');
 
-      if (modalPriceColIndex !== -1) { // Pastikan kolom 'Harga Modal (Rp)' ada
+      if (modalPriceColIndex !== -1) {
         const produkSheet = SS.getSheetByName(CONFIG.PRODUK.name);
         const produkData = produkSheet.getDataRange().getValues();
         const currentModalMap = {};
@@ -67,23 +67,23 @@ function setupSheets() {
           currentModalMap[produkData[i][0]] = produkData[i][3]; // SKU -> Harga Modal (Rp)
         }
 
-        let valuesToUpdate = [];
-        for (let i = 1; i < penjualanData.length; i++) { // Mulai dari baris data pertama
+        let updatedRows = [];
+        for (let i = 1; i < penjualanData.length; i++) {
           const row = penjualanData[i];
           const sku = row[2];
           const existingModal = row[modalPriceColIndex];
 
           // Jika kolom Harga Modal (Rp) kosong, isi dengan harga modal saat ini
           if (existingModal === "" || existingModal === null || existingModal === undefined) {
-            const modalFromProduk = currentModalMap[sku] || 0;
-            row[modalPriceColIndex] = modalFromProduk;
-            valuesToUpdate.push(row);
-          } else {
-            valuesToUpdate.push(row);
+            row[modalPriceColIndex] = currentModalMap[sku] || 0;
           }
+          updatedRows.push(row);
         }
-        // Tulis kembali seluruh data (termasuk header) dengan nilai yang dimigrasi
-        penjualanSheet.getRange(1, 1, penjualanData.length, penjualanData[0].length).setValues([headers, ...valuesToUpdate.slice(1)]);
+        
+        // Tulis kembali hanya baris data (mulai dari baris 2)
+        if (updatedRows.length > 0) {
+          penjualanSheet.getRange(2, 1, updatedRows.length, headers.length).setValues(updatedRows);
+        }
       }
     }
   }
@@ -244,12 +244,14 @@ function getDashboardStats() {
   let stats = { daily: { omzet: 0, laba: 0, items: {} } };
 
   data.forEach(row => {
-    const tgl = new Date(row[1]);
+    const tglRaw = row[1];
+    if (!tglRaw) return;
+    const tgl = new Date(tglRaw);
     if (Utilities.formatDate(tgl, "GMT+7", "yyyy-MM-dd") === todayStr) {
       const sku = row[2];
       const nama = row[3];
-      const qty = Number(row[6]);
-      const total = Number(row[7]);
+      const qty = Number(row[6]) || 0;
+      const total = Number(row[7]) || 0;
       // Ambil modal dari kolom ke-9 (index 8). Jika kosong, anggap 0.
       const modal = Number(row[8]) || 0;
       const laba = total - (modal * qty);
@@ -288,10 +290,12 @@ function getDailyProfitStats() {
   
   let daily = {};
   data.forEach(row => {
-    const d = Utilities.formatDate(new Date(row[1]), "GMT+7", "yyyy-MM-dd");
+    const tglRaw = row[1];
+    if (!tglRaw) return;
+    const d = Utilities.formatDate(new Date(tglRaw), "GMT+7", "yyyy-MM-dd");
     const sku = row[2];
-    const qty = Number(row[6]);
-    const total = Number(row[7]);
+    const qty = Number(row[6]) || 0;
+    const total = Number(row[7]) || 0;
     // Ambil modal dari kolom ke-9 (index 8). Jika kosong, anggap 0.
     const modal = Number(row[8]) || 0;
     const laba = total - (modal * qty);
@@ -317,10 +321,12 @@ function getFishProfitStats() {
   data.shift();
   let daily = {};
   data.forEach(row => {
-    const d = Utilities.formatDate(new Date(row[0]), "GMT+7", "yyyy-MM-dd");
+    const tglRaw = row[0];
+    if (!tglRaw) return;
+    const d = Utilities.formatDate(new Date(tglRaw), "GMT+7", "yyyy-MM-dd");
     if (!daily[d]) daily[d] = { tanggal: d, omzet: 0, laba: 0 };
-    daily[d].omzet += Number(row[4]);
-    daily[d].laba += Number(row[7]);
+    daily[d].omzet += Number(row[4]) || 0;
+    daily[d].laba += Number(row[7]) || 0;
   });
   return Object.values(daily).sort((a,b) => b.tanggal.localeCompare(a.tanggal));
 }
@@ -338,10 +344,12 @@ function getDigitalProfitStats() {
   data.shift();
   let daily = {};
   data.forEach(row => {
-    const d = Utilities.formatDate(new Date(row[0]), "GMT+7", "yyyy-MM-dd");
+    const tglRaw = row[0];
+    if (!tglRaw) return;
+    const d = Utilities.formatDate(new Date(tglRaw), "GMT+7", "yyyy-MM-dd");
     if (!daily[d]) daily[d] = { tanggal: d, omzet: 0, laba: 0 };
-    daily[d].omzet += Number(row[2]);
-    daily[d].laba += Number(row[3]);
+    daily[d].omzet += Number(row[2]) || 0;
+    daily[d].laba += Number(row[3]) || 0;
   });
   return Object.values(daily).sort((a,b) => b.tanggal.localeCompare(a.tanggal));
 }
