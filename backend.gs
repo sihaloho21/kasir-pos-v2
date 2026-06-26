@@ -66,6 +66,7 @@ function doPost(e) {
     const data = JSON.parse(e.postData.contents);
     if (data.action === 'processFishSale') return createResponse(processFishSale(data));
     if (data.action === 'processDigitalSale') return createResponse(processDigitalSale(data));
+    if (data.action === 'updateProductPrice') return createResponse(updateProductPrice(data));
     return createResponse(processTransaction(data));
   } catch (err) {
     return createResponse({ status: 'error', message: err.toString() });
@@ -293,6 +294,34 @@ function getDigitalProfitStats() {
     daily[d].laba += Number(row[3]);
   });
   return Object.values(daily).sort((a,b) => b.tanggal.localeCompare(a.tanggal));
+}
+
+function updateProductPrice(data) {
+  const { sku, hargaModal, hargaJual } = data;
+  const sheet = SS.getSheetByName(CONFIG.PRODUK.name);
+  const rows = sheet.getDataRange().getValues();
+  
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0] == sku) {
+      // Column index: Harga Modal (Rp) = 4 (index 3), Perkiraan Harga (Rp) = 6 (index 5)
+      sheet.getRange(i + 1, 4).setValue(hargaModal);
+      sheet.getRange(i + 1, 6).setValue(hargaJual);
+      
+      // Juga update di Rekap Produk jika ada
+      const sheetRekap = SS.getSheetByName(CONFIG.REKAP.name);
+      const rekapRows = sheetRekap.getDataRange().getValues();
+      for (let j = 1; j < rekapRows.length; j++) {
+        if (rekapRows[j][0] == sku) {
+          sheetRekap.getRange(j + 1, 4).setValue(hargaModal);
+          sheetRekap.getRange(j + 1, 5).setValue(hargaJual);
+          break;
+        }
+      }
+      
+      return { status: 'success', message: 'Harga berhasil diperbarui' };
+    }
+  }
+  return { status: 'error', message: 'Produk tidak ditemukan' };
 }
 
 

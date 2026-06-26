@@ -44,6 +44,33 @@
         </div>
     </nav>
 
+    <!-- Update Price Modal -->
+    <div id="update-price-modal" class="fixed inset-0 z-[100] flex items-center justify-center hidden">
+        <div class="absolute inset-0 bg-black bg-opacity-50 backdrop-blur-sm"></div>
+        <div class="relative bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full mx-4 transform transition-all">
+            <h3 class="text-xl font-bold text-gray-900 mb-4">Update Harga</h3>
+            <div class="space-y-4">
+                <input type="hidden" id="update-sku">
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Nama Produk</label>
+                    <p id="update-nama" class="text-sm font-bold text-gray-800"></p>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Harga Modal (Rp)</label>
+                    <input type="number" id="update-harga-modal" class="w-full p-2 border-2 rounded-lg outline-none focus:border-teal-500 transition">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Harga Jual (Rp)</label>
+                    <input type="number" id="update-harga-jual" class="w-full p-2 border-2 rounded-lg outline-none focus:border-teal-500 transition">
+                </div>
+                <div class="flex space-x-3 pt-2">
+                    <button onclick="closeUpdateModal()" class="flex-1 py-2 px-4 bg-gray-100 text-gray-600 font-bold rounded-lg hover:bg-gray-200 transition">BATAL</button>
+                    <button onclick="submitPriceUpdate()" id="btn-submit-update" class="flex-1 py-2 px-4 bg-teal-600 text-white font-bold rounded-lg hover:bg-teal-700 transition">SIMPAN</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Notification Modal -->
     <div id="notification-modal" class="fixed inset-0 z-[100] flex items-center justify-center hidden">
         <div class="absolute inset-0 bg-black bg-opacity-50 backdrop-blur-sm"></div>

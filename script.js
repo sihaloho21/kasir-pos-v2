@@ -533,12 +533,14 @@ function renderProducts(data) {
         const isLow = sisaStok < 5;
         const card = document.createElement('div');
         card.className = `product-card bg-white p-4 rounded-xl border ${isLow ? 'border-red-500 bg-red-50' : 'border-gray-100'} flex flex-col items-center text-center cursor-pointer hover:shadow-md transition`;
-        card.onclick = () => addToCart(p);
         card.innerHTML = `
-            <div class="w-10 h-10 ${isLow ? 'bg-red-500' : 'bg-teal-600'} text-white flex items-center justify-center rounded-lg font-bold mb-2">${(p.Nama_Produk || '??').substring(0, 2).toUpperCase()}</div>
-            <h3 class="text-xs font-medium text-gray-700 h-8 overflow-hidden">${p.Nama_Produk || 'Tanpa Nama'}</h3>
-            <p class="text-teal-600 font-bold text-sm">${formatRupiah(p.Perkiraan_Harga_Rp)}</p>
-            <p class="text-[10px] ${isLow ? 'text-red-600 font-bold' : 'text-gray-400'}">Stok: ${sisaStok}</p>
+            <div onclick="addToCart(${JSON.stringify(p).replace(/"/g, '&quot;')})" class="flex-1 flex flex-col items-center">
+                <div class="w-10 h-10 ${isLow ? 'bg-red-500' : 'bg-teal-600'} text-white flex items-center justify-center rounded-lg font-bold mb-2">${(p.Nama_Produk || '??').substring(0, 2).toUpperCase()}</div>
+                <h3 class="text-xs font-medium text-gray-700 h-8 overflow-hidden">${p.Nama_Produk || 'Tanpa Nama'}</h3>
+                <p class="text-teal-600 font-bold text-sm">${formatRupiah(p.Perkiraan_Harga_Rp)}</p>
+                <p class="text-[10px] ${isLow ? 'text-red-600 font-bold' : 'text-gray-400'}">Stok: ${sisaStok}</p>
+            </div>
+            <button onclick="openUpdateModal(${JSON.stringify(p).replace(/"/g, '&quot;')})" class="mt-2 text-[10px] font-bold text-gray-400 hover:text-teal-600 uppercase tracking-tighter"><i class="fas fa-edit mr-1"></i>Update Harga</button>
         `;
         fragment.appendChild(card);
     });
@@ -626,4 +628,47 @@ function filterProducts() {
 
 function formatRupiah(num) {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(num || 0);
+}
+
+function openUpdateModal(p) {
+    document.getElementById('update-sku').value = p.SKU;
+    document.getElementById('update-nama').innerText = p.Nama_Produk;
+    document.getElementById('update-harga-modal').value = p.Harga_Modal_Rp || 0;
+    document.getElementById('update-harga-jual').value = p.Perkiraan_Harga_Rp || 0;
+    document.getElementById('update-price-modal').classList.remove('hidden');
+}
+
+function closeUpdateModal() {
+    document.getElementById('update-price-modal').classList.add('hidden');
+}
+
+async function submitPriceUpdate() {
+    const sku = document.getElementById('update-sku').value;
+    const hargaModal = parseFloat(document.getElementById('update-harga-modal').value);
+    const hargaJual = parseFloat(document.getElementById('update-harga-jual').value);
+    
+    if (isNaN(hargaModal) || isNaN(hargaJual)) return alert('Harga harus diisi!');
+    
+    const btn = document.getElementById('btn-submit-update');
+    try {
+        btn.disabled = true;
+        btn.innerText = 'MENYIMPAN...';
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'updateProductPrice', sku, hargaModal, hargaJual })
+        });
+        const res = await response.json();
+        if (res.status === 'success') {
+            showNotification('Berhasil!', 'Harga produk berhasil diperbarui');
+            closeUpdateModal();
+            fetchProducts();
+        } else {
+            showNotification('Gagal!', res.message, 'error');
+        }
+    } catch (e) {
+        showNotification('Kesalahan!', 'Terjadi kesalahan koneksi!', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerText = 'SIMPAN';
+    }
 }
