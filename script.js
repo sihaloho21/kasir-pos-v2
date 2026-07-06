@@ -508,14 +508,18 @@ function renderProducts(data) {
         const isLow = sisaStok < 5;
         const card = document.createElement('div');
         card.className = `product-card bg-white p-4 rounded-xl border ${isLow ? 'border-red-500 bg-red-50' : 'border-gray-100'} flex flex-col items-center text-center cursor-pointer hover:shadow-md transition`;
+        
+        // Seluruh card bisa diklik
+        card.onclick = () => addToCart(p);
+        
         card.innerHTML = `
-            <div onclick="addToCart(${JSON.stringify(p).replace(/"/g, '&quot;')})" class="flex-1 flex flex-col items-center">
+            <div class="flex-1 flex flex-col items-center">
                 <div class="w-10 h-10 ${isLow ? 'bg-red-500' : 'bg-teal-600'} text-white flex items-center justify-center rounded-lg font-bold mb-2">${(p.Nama_Produk || '??').substring(0, 2).toUpperCase()}</div>
                 <h3 class="text-xs font-medium text-gray-700 h-8 overflow-hidden">${p.Nama_Produk || 'Tanpa Nama'}</h3>
                 <p class="text-teal-600 font-bold text-sm">${formatRupiah(p.Perkiraan_Harga_Rp)}</p>
                 <p class="text-[10px] ${isLow ? 'text-red-600 font-bold' : 'text-gray-400'}">Stok: ${sisaStok}</p>
             </div>
-            <button onclick="openUpdateModal(${JSON.stringify(p).replace(/"/g, '&quot;')})" class="mt-2 text-[10px] font-bold text-gray-400 hover:text-teal-600 uppercase tracking-tighter"><i class="fas fa-edit mr-1"></i>Update Harga</button>
+            <button onclick="event.stopPropagation(); openUpdateModal(${JSON.stringify(p).replace(/"/g, '&quot;')})" class="mt-2 text-[10px] font-bold text-gray-400 hover:text-teal-600 uppercase tracking-tighter"><i class="fas fa-edit mr-1"></i>Update Harga</button>
         `;
         fragment.appendChild(card);
     });
