@@ -6,7 +6,6 @@ let API_URL = localStorage.getItem('pos_api_url') || DEFAULT_API_URL;
 
 let products = [];
 let cart = [];
-let selectedCategory = 'Semua';
 let reportProfitData = {
     warung: null,
     fish: null,
@@ -423,7 +422,6 @@ async function fetchProducts() {
     try {
         const response = await fetch(`${API_URL}?action=getProducts`);
         products = await response.json();
-        renderCategories(products);
         renderProducts(products);
     } catch (error) { console.error(error); }
 }
@@ -479,20 +477,6 @@ function renderDashboard(stats) {
     }
 }
 
-function renderCategories(data) {
-    const container = document.getElementById('category-filter');
-    if (!container || !data) return;
-    const categories = ['Semua', ...new Set(data.map(p => p.Kategori).filter(k => k))];
-    container.innerHTML = '';
-    categories.forEach(cat => {
-        const btn = document.createElement('button');
-        btn.className = `px-3 py-1.5 rounded-lg text-[11px] font-semibold transition whitespace-nowrap min-w-[80px] ${selectedCategory === cat ? 'bg-teal-600 text-white shadow-sm' : 'bg-white text-gray-600 border border-gray-200 hover:border-teal-300 hover:text-teal-600'}`;
-        btn.innerText = cat;
-        btn.onclick = () => { selectedCategory = cat; renderCategories(data); filterProducts(); };
-        container.appendChild(btn);
-    });
-}
-
 function renderProducts(data) {
     const grid = document.getElementById('product-grid');
     if (!grid || !data) return;
@@ -509,7 +493,6 @@ function renderProducts(data) {
         const card = document.createElement('div');
         card.className = `product-card bg-white p-4 rounded-xl border ${isLow ? 'border-red-500 bg-red-50' : 'border-gray-100'} flex flex-col items-center text-center cursor-pointer hover:shadow-md transition`;
         
-        // Seluruh card bisa diklik
         card.onclick = () => addToCart(p);
         
         card.innerHTML = `
@@ -616,8 +599,7 @@ function filterProducts() {
     const search = searchInput.value.toLowerCase();
     const filtered = products.filter(p => {
         const matchesSearch = (p.Nama_Produk || '').toLowerCase().includes(search) || (p.SKU || '').toString().toLowerCase().includes(search);
-        const matchesCategory = selectedCategory === 'Semua' || p.Kategori === selectedCategory;
-        return matchesSearch && matchesCategory;
+        return matchesSearch;
     });
     renderProducts(filtered);
 }
