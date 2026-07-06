@@ -374,8 +374,11 @@ function renderReportProfitSummary() {
                 <span class="text-[10px] font-bold uppercase tracking-wide text-gray-400">Laba Bulan Ini</span>
             </div>
             <p class="text-xs font-bold text-gray-500 mb-1">${title}</p>
-            <p class="text-2xl font-black text-gray-900">${summary.isLoaded ? formatRupiah(summary.laba) : 'Memuat...'}</p>
-            <p class="text-[10px] text-gray-400 mt-2">Omzet: ${summary.isLoaded ? formatRupiah(summary.omzet) : '-'}</p>
+            <p class="text-2xl font-black text-gray-900">${formatRupiah(summary.laba)}</p>
+            <div class="mt-3 pt-3 border-t border-gray-50 flex items-center justify-between">
+                <span class="text-[10px] text-gray-400">Omzet</span>
+                <span class="text-xs font-bold text-gray-700">${formatRupiah(summary.omzet)}</span>
+            </div>
         </div>
     `;
 
@@ -383,19 +386,21 @@ function renderReportProfitSummary() {
         ${createSummaryCard('Warung', 'fa-store', { bg: 'bg-teal-50', text: 'text-teal-600' }, summaries.warung)}
         ${createSummaryCard('Ikan', 'fa-fish', { bg: 'bg-blue-50', text: 'text-blue-600' }, summaries.fish)}
         ${createSummaryCard('Digital', 'fa-mobile-alt', { bg: 'bg-purple-50', text: 'text-purple-600' }, summaries.digital)}
-        <div class="bg-gray-900 rounded-xl shadow-sm p-5 text-white">
+        <div class="bg-teal-600 rounded-xl shadow-lg p-5 text-white sm:col-span-1 lg:col-span-1">
             <div class="flex items-center justify-between mb-4">
-                <div class="w-10 h-10 rounded-lg bg-white/10 text-yellow-300 flex items-center justify-center">
-                    <i class="fas fa-coins"></i>
+                <div class="w-10 h-10 rounded-lg bg-white/20 flex items-center justify-center">
+                    <i class="fas fa-wallet text-white"></i>
                 </div>
-                <span class="text-[10px] font-bold uppercase tracking-wide text-gray-300">Warung + Ikan + Digital</span>
+                <span class="text-[10px] font-bold uppercase tracking-wide text-white/60">Total Bersih</span>
             </div>
-            <p class="text-xs font-bold text-gray-300 mb-1">Total Keseluruhan Laba</p>
-            <p class="text-2xl font-black text-yellow-300">${isTotalLoaded ? formatRupiah(totalLaba) : 'Memuat...'}</p>
-            <p class="text-[10px] text-gray-400 mt-2">${getCurrentMonthLabel()}</p>
+            <p class="text-xs font-bold text-white/80 mb-1">Total Laba Gabungan</p>
+            <p class="text-3xl font-black text-white">${formatRupiah(totalLaba)}</p>
+            <div class="mt-3 pt-3 border-t border-white/10 flex items-center justify-between">
+                <span class="text-[10px] text-white/60">Status</span>
+                <span class="text-[10px] font-bold bg-white/20 px-2 py-0.5 rounded-full uppercase">Updated</span>
+            </div>
         </div>
     `;
-
     renderMonthlyIncomeTable();
 }
 
@@ -414,8 +419,6 @@ function renderDailyProfitTable(data, targetId) {
     });
 }
 
-
-// --- CORE POS LOGIC ---
 async function fetchProducts() {
     try {
         const response = await fetch(`${API_URL}?action=getProducts`);
@@ -458,50 +461,22 @@ function renderDashboard(stats) {
     if (!container || !stats) return;
 
     if (summaryContainer) {
-        const totalOmzet = (stats.segments?.warung?.omzet || 0) + (stats.segments?.fish?.omzet || 0) + (stats.segments?.digital?.omzet || 0);
-        const totalLaba = (stats.segments?.warung?.laba || 0) + (stats.segments?.fish?.laba || 0) + (stats.segments?.digital?.laba || 0);
-        
-        summaryContainer.innerHTML = `
-            <div class="bg-gradient-to-br from-teal-600 to-teal-800 rounded-2xl p-8 text-white shadow-lg mb-8">
-                <div class="flex flex-col md:flex-row justify-between items-center gap-6">
-                    <div class="text-center md:text-left">
-                        <p class="text-teal-100 text-xs font-bold uppercase tracking-widest mb-1">Total Omzet Hari Ini</p>
-                        <h3 class="text-4xl font-black">${formatRupiah(totalOmzet)}</h3>
-                    </div>
-                    <div class="h-px md:h-16 w-full md:w-px bg-white/20"></div>
-                    <div class="text-center md:text-left">
-                        <p class="text-indigo-100 text-xs font-bold uppercase tracking-widest mb-1">Total Laba Bersih</p>
-                        <h3 class="text-4xl font-black text-yellow-300">${formatRupiah(totalLaba)}</h3>
-                    </div>
+        const createCard = (title, segment, color) => `
+            <div class="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+                <h4 class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">${title}</h4>
+                <div class="flex items-baseline space-x-2">
+                    <span class="text-lg font-black text-gray-800">${formatRupiah(segment?.laba)}</span>
+                    <span class="text-[10px] text-gray-400">Laba</span>
                 </div>
+                <div class="mt-2 text-[10px] text-gray-500">Omzet: <span class="font-bold">${formatRupiah(segment?.omzet)}</span></div>
             </div>
+        `;
+        summaryContainer.innerHTML = `
+            ${createCard('Warung', stats.segments?.warung, 'teal')}
+            ${createCard('Ikan', stats.segments?.fish, 'blue')}
+            ${createCard('Digital', stats.segments?.digital, 'purple')}
         `;
     }
-
-    const createCard = (title, data, color) => {
-        if (!data) return '';
-        return `
-            <div class="bg-white p-5 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition">
-                <div class="flex items-center mb-3">
-                    <div class="w-8 h-8 rounded-lg bg-${color}-100 text-${color}-600 flex items-center justify-center mr-3">
-                        <i class="fas ${title === 'Warung' ? 'fa-store' : title === 'Ikan' ? 'fa-fish' : 'fa-mobile-alt'}"></i>
-                    </div>
-                    <h4 class="text-sm font-bold text-gray-700 uppercase">${title}</h4>
-                </div>
-                <p class="text-2xl font-black text-gray-800">${formatRupiah(data.omzet)}</p>
-                <div class="flex justify-between items-center mt-2">
-                    <span class="text-xs text-gray-400">Laba Bersih</span>
-                    <span class="text-sm font-bold text-${color}-600">${formatRupiah(data.laba)}</span>
-                </div>
-            </div>
-        `;
-    };
-
-    container.innerHTML = `
-        ${createCard('Warung', stats.segments?.warung, 'teal')}
-        ${createCard('Ikan', stats.segments?.fish, 'blue')}
-        ${createCard('Digital', stats.segments?.digital, 'purple')}
-    `;
 }
 
 function renderCategories(data) {
@@ -574,7 +549,16 @@ function renderCart() {
         const div = document.createElement('div');
         div.className = "flex justify-between items-center border-b border-gray-50 pb-2";
         div.innerHTML = `
-            <div class="flex-1"><h4 class="text-xs font-bold">${item.Nama_Produk}</h4><p class="text-[10px] text-gray-400">${item.Qty} x ${formatRupiah(item.Harga_Satuan)}</p></div>
+            <div class="flex-1">
+                <h4 class="text-xs font-bold">${item.Nama_Produk}</h4>
+                <div class="flex items-center mt-1">
+                    <span class="text-[10px] text-gray-400 mr-2">${item.Qty} x </span>
+                    <input type="number" 
+                           class="w-20 px-1 py-0.5 text-[10px] border border-gray-200 rounded focus:border-teal-500 focus:outline-none" 
+                           value="${item.Harga_Satuan}" 
+                           onchange="updateManualPrice(${index}, this.value)">
+                </div>
+            </div>
             <div class="flex items-center space-x-2">
                 <button onclick="updateQty(${index}, -1)" class="text-gray-400 hover:text-red-500"><i class="fas fa-minus-circle"></i></button>
                 <span class="text-xs font-bold">${item.Qty}</span>
@@ -586,6 +570,14 @@ function renderCart() {
     container.innerHTML = cart.length ? '' : '<p class="text-center text-gray-400 text-xs mt-10">Kosong</p>';
     if (cart.length) container.appendChild(fragment);
     totalEl.innerText = formatRupiah(total);
+}
+
+function updateManualPrice(index, newPrice) {
+    if (index < 0 || index >= cart.length) return;
+    const price = parseFloat(newPrice) || 0;
+    cart[index].Harga_Satuan = price;
+    cart[index].Total = cart[index].Qty * price;
+    renderCart();
 }
 
 function updateQty(index, delta) {
