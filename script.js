@@ -6,6 +6,7 @@ let API_URL = localStorage.getItem('pos_api_url') || DEFAULT_API_URL;
 
 let products = [];
 let cart = [];
+let pinnedSkus = JSON.parse(localStorage.getItem('pinned_skus') || '[]');
 let reportProfitData = {
     warung: null,
     fish: null,
@@ -423,6 +424,7 @@ async function fetchProducts() {
         const response = await fetch(`${API_URL}?action=getProducts`);
         products = await response.json();
         renderProducts(products);
+        renderPinnedProducts();
     } catch (error) { console.error(error); }
 }
 
@@ -490,12 +492,16 @@ function renderProducts(data) {
     sortedProducts.slice(0, 20).forEach(p => {
         const sisaStok = p.SISA_STOK || 0;
         const isLow = sisaStok < 5;
+        const isPinned = pinnedSkus.includes(p.SKU);
         const card = document.createElement('div');
-        card.className = `product-card bg-white p-4 rounded-xl border ${isLow ? 'border-red-500 bg-red-50' : 'border-gray-100'} flex flex-col items-center text-center cursor-pointer hover:shadow-md transition`;
+        card.className = `product-card relative bg-white p-4 rounded-xl border ${isLow ? 'border-red-500 bg-red-50' : 'border-gray-100'} flex flex-col items-center text-center cursor-pointer hover:shadow-md transition`;
         
         card.onclick = () => addToCart(p);
         
         card.innerHTML = `
+            <button onclick="event.stopPropagation(); togglePin('${p.SKU}')" class="absolute top-2 right-2 p-1 text-xs ${isPinned ? 'text-teal-600' : 'text-gray-300 hover:text-teal-400'} transition">
+                <i class="fas fa-thumbtack ${isPinned ? '' : 'opacity-50'}"></i>
+            </button>
             <div class="flex-1 flex flex-col items-center">
                 <div class="w-10 h-10 ${isLow ? 'bg-red-500' : 'bg-teal-600'} text-white flex items-center justify-center rounded-lg font-bold mb-2">${(p.Nama_Produk || '??').substring(0, 2).toUpperCase()}</div>
                 <h3 class="text-xs font-medium text-gray-700 h-8 overflow-hidden">${p.Nama_Produk || 'Tanpa Nama'}</h3>
@@ -508,6 +514,50 @@ function renderProducts(data) {
     });
     grid.innerHTML = '';
     grid.appendChild(fragment);
+}
+
+function togglePin(sku) {
+    const index = pinnedSkus.indexOf(sku);
+    if (index > -1) {
+        pinnedSkus.splice(index, 1);
+    } else {
+        pinnedSkus.push(sku);
+    }
+    localStorage.setItem('pinned_skus', JSON.stringify(pinnedSkus));
+    renderProducts(products);
+    renderPinnedProducts();
+}
+
+function renderPinnedProducts() {
+    const container = document.getElementById('pinned-products-container');
+    const grid = document.getElementById('pinned-products-grid');
+    if (!container || !grid) return;
+
+    const pinnedItems = products.filter(p => pinnedSkus.includes(p.SKU));
+    
+    if (pinnedItems.length === 0) {
+        container.classList.add('hidden');
+        return;
+    }
+
+    container.classList.remove('hidden');
+    grid.innerHTML = '';
+    
+    pinnedItems.forEach(p => {
+        const btn = document.createElement('button');
+        btn.className = "flex items-center space-x-2 bg-white border border-teal-100 hover:border-teal-400 px-3 py-2 rounded-lg shadow-sm transition active:scale-95 whitespace-nowrap";
+        btn.onclick = () => addToCart(p);
+        btn.innerHTML = `
+            <div class="w-6 h-6 bg-teal-50 text-teal-600 rounded flex items-center justify-center text-[10px] font-black">
+                ${(p.Nama_Produk || '??').substring(0, 1).toUpperCase()}
+            </div>
+            <div class="text-left">
+                <p class="text-[10px] font-bold text-gray-800 leading-tight">${p.Nama_Produk}</p>
+                <p class="text-[9px] text-teal-600 font-black">${formatRupiah(p.Perkiraan_Harga_Rp)}</p>
+            </div>
+        `;
+        grid.appendChild(btn);
+    });
 }
 
 
