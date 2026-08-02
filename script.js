@@ -506,6 +506,7 @@ function renderProducts(data) {
                 <div class="w-10 h-10 ${isLow ? 'bg-red-500' : 'bg-teal-600'} text-white flex items-center justify-center rounded-lg font-bold mb-2">${(p.Nama_Produk || '??').substring(0, 2).toUpperCase()}</div>
                 <h3 class="text-xs font-medium text-gray-700 h-8 overflow-hidden">${p.Nama_Produk || 'Tanpa Nama'}</h3>
                 <p class="text-teal-600 font-bold text-sm">${formatRupiah(p.Perkiraan_Harga_Rp)}</p>
+                <p class="text-[9px] text-gray-400 italic">M: ${formatRupiah(p.Harga_Modal_Rp)}</p>
                 <p class="text-[10px] ${isLow ? 'text-red-600 font-bold' : 'text-gray-400'}">Stok: ${sisaStok}</p>
             </div>
             <button onclick="event.stopPropagation(); openUpdateModal(${JSON.stringify(p).replace(/"/g, '&quot;')})" class="mt-2 text-[10px] font-bold text-gray-400 hover:text-teal-600 uppercase tracking-tighter"><i class="fas fa-edit mr-1"></i>Update Harga</button>
@@ -553,7 +554,10 @@ function renderPinnedProducts() {
             </div>
             <div class="text-left">
                 <p class="text-[10px] font-bold text-gray-800 leading-tight">${p.Nama_Produk}</p>
-                <p class="text-[9px] text-teal-600 font-black">${formatRupiah(p.Perkiraan_Harga_Rp)}</p>
+                <div class="flex items-center space-x-2">
+                    <p class="text-[9px] text-teal-600 font-black">${formatRupiah(p.Perkiraan_Harga_Rp)}</p>
+                    <p class="text-[8px] text-gray-400 italic">M: ${formatRupiah(p.Harga_Modal_Rp)}</p>
+                </div>
             </div>
         `;
         grid.appendChild(btn);
