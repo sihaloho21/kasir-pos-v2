@@ -10,7 +10,8 @@ let pinnedSkus = JSON.parse(localStorage.getItem('pinned_skus') || '[]');
 let reportProfitData = {
     warung: null,
     fish: null,
-    digital: null
+    digital: null,
+    manual: []
 };
 
 // Inisialisasi
@@ -122,6 +123,7 @@ function showPage(pageId) {
         fetchDailyProfit();
         fetchFishProfit();
         fetchDigitalProfit();
+        fetchManualMonthly();
     }
 }
 
@@ -326,6 +328,15 @@ function renderMonthlyIncomeTable() {
     }
 
     const monthlyMap = {};
+    
+    // Add manual data first
+    if (Array.isArray(reportProfitData.manual)) {
+        reportProfitData.manual.forEach(m => {
+            monthlyMap[m.bulan] = { monthKey: m.bulan, warung: m.warung, fish: m.fish, digital: m.digital };
+        });
+    }
+
+    // Add/Update with automatic data
     addMonthlyIncomeRows(monthlyMap, reportProfitData.warung, 'warung');
     addMonthlyIncomeRows(monthlyMap, reportProfitData.fish, 'fish');
     addMonthlyIncomeRows(monthlyMap, reportProfitData.digital, 'digital');
@@ -340,11 +351,11 @@ function renderMonthlyIncomeTable() {
         const total = row.warung + row.fish + row.digital;
         return `
             <tr class="border-b border-gray-50 last:border-b-0">
-                <td class="px-3 py-3 font-bold text-gray-800 whitespace-nowrap">${getMonthLabel(row.monthKey)}</td>
-                <td class="px-3 py-3 font-bold text-teal-700">${formatRupiah(row.warung)}</td>
-                <td class="px-3 py-3 font-bold text-blue-700">${formatRupiah(row.fish)}</td>
-                <td class="px-3 py-3 font-bold text-purple-700">${formatRupiah(row.digital)}</td>
-                <td class="px-3 py-3 font-black text-gray-900">${formatRupiah(total)}</td>
+                <td class="px-6 py-4 font-bold text-gray-800 whitespace-nowrap">${getMonthLabel(row.monthKey)}</td>
+                <td class="px-6 py-4 font-bold text-teal-700">${formatRupiah(row.warung)}</td>
+                <td class="px-6 py-4 font-bold text-blue-700">${formatRupiah(row.fish)}</td>
+                <td class="px-6 py-4 font-bold text-purple-700">${formatRupiah(row.digital)}</td>
+                <td class="px-6 py-4 font-black text-gray-900 bg-teal-50/30">${formatRupiah(total)}</td>
             </tr>
         `;
     }).join('');
@@ -727,5 +738,57 @@ async function refreshData() {
     } finally {
         btn.disabled = false;
         if (icon) icon.classList.remove('fa-spin');
+    }
+}
+
+// --- MANUAL MONTHLY LOGIC ---
+async function fetchManualMonthly() {
+    try {
+        const response = await fetch(`${API_URL}?action=getManualMonthlyStats`);
+        const data = await response.json();
+        if (Array.isArray(data)) {
+            reportProfitData.manual = data;
+            renderMonthlyIncomeTable();
+        }
+    } catch (error) { console.error(error); }
+}
+
+function openManualMonthlyModal() {
+    document.getElementById('manual-monthly-modal').classList.remove('hidden');
+}
+
+function closeManualMonthlyModal() {
+    document.getElementById('manual-monthly-modal').classList.add('hidden');
+}
+
+async function submitManualMonthly() {
+    const bulan = document.getElementById('manual-month').value;
+    const warung = parseFloat(document.getElementById('manual-laba-warung').value) || 0;
+    const fish = parseFloat(document.getElementById('manual-laba-fish').value) || 0;
+    const digital = parseFloat(document.getElementById('manual-laba-digital').value) || 0;
+
+    if (!bulan) return alert('Bulan wajib dipilih!');
+
+    const btn = document.getElementById('btn-submit-manual');
+    try {
+        btn.disabled = true;
+        btn.innerText = 'MENYIMPAN...';
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'saveManualMonthly', bulan, warung, fish, digital })
+        });
+        const res = await response.json();
+        if (res.status === 'success') {
+            showNotification('Berhasil!', 'Data laba manual berhasil disimpan');
+            closeManualMonthlyModal();
+            fetchManualMonthly();
+        } else {
+            showNotification('Gagal!', res.message, 'error');
+        }
+    } catch (e) {
+        showNotification('Kesalahan!', 'Terjadi kesalahan koneksi!', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerText = 'SIMPAN';
     }
 }

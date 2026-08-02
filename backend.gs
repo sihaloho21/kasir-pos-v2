@@ -27,6 +27,10 @@ const CONFIG = {
   PRODUK_DIGITAL: {
     name: 'Produk_Digital',
     headers: ['TANGGAL', 'NOMINAL', 'HARGA JUAL', 'KEUNTUNGAN', 'CATATAN']
+  },
+  MANUAL_REKAP: {
+    name: 'Manual_Rekap_Bulanan',
+    headers: ['Bulan', 'Laba Warung', 'Laba Ikan', 'Laba Digital']
   }
 };
 
@@ -118,6 +122,7 @@ function doGet(e) {
     if (action === 'getDailyProfitStats') return createResponse(getDailyProfitStats());
     if (action === 'getFishProfitStats') return createResponse(getFishProfitStats());
     if (action === 'getDigitalProfitStats') return createResponse(getDigitalProfitStats());
+    if (action === 'getManualMonthlyStats') return createResponse(getManualMonthlyStats());
     return createResponse({ status: 'error', message: 'Action not found' });
   } catch (err) {
     return createResponse({ status: 'error', message: err.toString() });
@@ -130,6 +135,7 @@ function doPost(e) {
     if (data.action === 'processFishSale') return createResponse(processFishSale(data));
     if (data.action === 'processDigitalSale') return createResponse(processDigitalSale(data));
     if (data.action === 'updateProductPrice') return createResponse(updateProductPrice(data));
+    if (data.action === 'saveManualMonthly') return createResponse(saveManualMonthly(data));
     return createResponse(processTransaction(data));
   } catch (err) {
     return createResponse({ status: 'error', message: err.toString() });
@@ -412,4 +418,40 @@ function updateProductPrice(data) {
     }
   }
   return { status: 'error', message: 'Produk tidak ditemukan' };
+}
+
+function saveManualMonthly(d) {
+  const sheet = SS.getSheetByName(CONFIG.MANUAL_REKAP.name);
+  if (!sheet) setupSheets();
+  const targetSheet = SS.getSheetByName(CONFIG.MANUAL_REKAP.name);
+  
+  const data = targetSheet.getDataRange().getValues();
+  let foundRow = -1;
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0] === d.bulan) {
+      foundRow = i + 1;
+      break;
+    }
+  }
+  
+  const rowData = [d.bulan, d.warung, d.fish, d.digital];
+  if (foundRow !== -1) {
+    targetSheet.getRange(foundRow, 1, 1, 4).setValues([rowData]);
+  } else {
+    targetSheet.appendRow(rowData);
+  }
+  return { status: 'success' };
+}
+
+function getManualMonthlyStats() {
+  const sheet = SS.getSheetByName(CONFIG.MANUAL_REKAP.name);
+  if (!sheet) return [];
+  const data = sheet.getDataRange().getValues();
+  const headers = data.shift();
+  return data.map(row => ({
+    bulan: row[0],
+    warung: sanitizeNumber(row[1]),
+    fish: sanitizeNumber(row[2]),
+    digital: sanitizeNumber(row[3])
+  }));
 }
