@@ -7,6 +7,7 @@ let API_URL = localStorage.getItem('pos_api_url') || DEFAULT_API_URL;
 let products = [];
 let cart = [];
 let pinnedSkus = JSON.parse(localStorage.getItem('pinned_skus') || '[]');
+let pinnedSortMode = localStorage.getItem('pinned_sort_mode') || 'default';
 let reportProfitData = {
     warung: null,
     fish: null,
@@ -545,11 +546,18 @@ function renderPinnedProducts() {
     const grid = document.getElementById('pinned-products-grid');
     if (!container || !grid) return;
 
-    const pinnedItems = products.filter(p => pinnedSkus.includes(p.SKU));
+    let pinnedItems = products.filter(p => pinnedSkus.includes(p.SKU));
     
     if (pinnedItems.length === 0) {
         container.classList.add('hidden');
         return;
+    }
+
+    // Apply Sorting
+    if (pinnedSortMode === 'az') {
+        pinnedItems.sort((a, b) => (a.Nama_Produk || '').localeCompare(b.Nama_Produk || '', 'id'));
+    } else if (pinnedSortMode === 'price') {
+        pinnedItems.sort((a, b) => (Number(a.Perkiraan_Harga_Rp) || 0) - (Number(b.Perkiraan_Harga_Rp) || 0));
     }
 
     container.classList.remove('hidden');
@@ -714,6 +722,12 @@ async function submitPriceUpdate() {
         btn.disabled = false;
         btn.innerText = 'SIMPAN';
     }
+}
+
+function sortPinned(mode) {
+    pinnedSortMode = mode;
+    localStorage.setItem('pinned_sort_mode', mode);
+    renderPinnedProducts();
 }
 
 async function refreshData() {

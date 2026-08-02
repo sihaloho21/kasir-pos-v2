@@ -159,9 +159,15 @@
                     
                     <!-- Area Produk Favorit (Pinned) -->
                     <div id="pinned-products-container" class="hidden pt-1">
-                        <p class="text-[9px] font-black text-teal-600 uppercase tracking-widest mb-2 flex items-center">
-                            <i class="fas fa-thumbtack mr-1"></i> Produk Favorit
-                        </p>
+                        <div class="flex items-center justify-between mb-2">
+                            <p class="text-[9px] font-black text-teal-600 uppercase tracking-widest flex items-center">
+                                <i class="fas fa-thumbtack mr-1"></i> Produk Favorit
+                            </p>
+                            <div class="flex space-x-1">
+                                <button onclick="sortPinned('az')" class="text-[8px] font-bold px-1.5 py-0.5 rounded border border-teal-100 text-teal-600 hover:bg-teal-50">A-Z</button>
+                                <button onclick="sortPinned('price')" class="text-[8px] font-bold px-1.5 py-0.5 rounded border border-teal-100 text-teal-600 hover:bg-teal-50">0-9</button>
+                            </div>
+                        </div>
                         <div id="pinned-products-grid" class="flex flex-wrap gap-2 overflow-x-auto pb-2 scrollbar-hide">
                             <!-- Tombol produk favorit akan muncul di sini -->
                         </div>
