@@ -704,3 +704,28 @@ async function submitPriceUpdate() {
         btn.innerText = 'SIMPAN';
     }
 }
+
+async function refreshData() {
+    const btn = document.getElementById('refresh-btn');
+    if (!btn) return;
+    const icon = btn.querySelector('i');
+    
+    try {
+        btn.disabled = true;
+        if (icon) icon.classList.add('fa-spin');
+        
+        // Refresh products and dashboard stats
+        await Promise.all([
+            fetchProducts(),
+            fetchDashboard()
+        ]);
+        
+        showNotification('Berhasil!', 'Data telah diperbarui');
+    } catch (error) {
+        console.error('Refresh failed:', error);
+        showNotification('Gagal!', 'Gagal memperbarui data', 'error');
+    } finally {
+        btn.disabled = false;
+        if (icon) icon.classList.remove('fa-spin');
+    }
+}

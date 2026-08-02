@@ -120,7 +120,12 @@
                     </div>
                 </div>
                 <div class="flex flex-col space-y-2 mb-4">
-                    <input type="text" id="search-input" placeholder="Cari produk..." class="w-full p-2 rounded-lg border border-gray-200 outline-none focus:ring-2 focus:ring-teal-500">
+                    <div class="flex space-x-2">
+                        <input type="text" id="search-input" placeholder="Cari produk..." class="w-full flex-1 p-2 rounded-lg border border-gray-200 outline-none focus:ring-2 focus:ring-teal-500">
+                        <button onclick="refreshData()" id="refresh-btn" class="px-3 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition text-gray-500" title="Refresh Data">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </div>
                     
                     <!-- Area Produk Favorit (Pinned) -->
                     <div id="pinned-products-container" class="hidden pt-1">
