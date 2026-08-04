@@ -34,6 +34,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnBayar = document.getElementById('btn-bayar');
     if (btnBayar) btnBayar.addEventListener('click', processPayment);
 
+    const pinInput = document.getElementById('pin-input');
+    if (pinInput) {
+        pinInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') verifyPin();
+        });
+    }
+
     ['fish-qty', 'fish-price', 'fish-cogs'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.addEventListener('input', updateFishPreview);
@@ -108,6 +115,42 @@ function handleNotificationShortcut(event) {
     closeNotification();
 }
 
+let pendingPageId = null;
+const ACCESS_PIN = "121212";
+
+function checkPinAccess(pageId) {
+    pendingPageId = pageId;
+    const pinModal = document.getElementById('pin-modal');
+    const pinInput = document.getElementById('pin-input');
+    
+    if (pinModal && pinInput) {
+        pinInput.value = '';
+        pinModal.classList.remove('hidden');
+        setTimeout(() => pinInput.focus(), 100);
+    }
+}
+
+function closePinModal() {
+    const pinModal = document.getElementById('pin-modal');
+    if (pinModal) pinModal.classList.add('hidden');
+    pendingPageId = null;
+}
+
+function verifyPin() {
+    const pinInput = document.getElementById('pin-input');
+    if (!pinInput) return;
+    
+    if (pinInput.value === ACCESS_PIN) {
+        const pageToOpen = pendingPageId;
+        closePinModal();
+        showPage(pageToOpen);
+    } else {
+        showNotification('PIN Salah!', 'Silahkan masukkan PIN yang benar.', 'error');
+        pinInput.value = '';
+        pinInput.focus();
+    }
+}
+
 function showPage(pageId) {
     document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
     document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('bg-teal-700', 'active'));
@@ -115,9 +158,14 @@ function showPage(pageId) {
     const targetPage = document.getElementById('page-' + pageId);
     if (targetPage) targetPage.classList.remove('hidden');
     
-    if (window.event && window.event.currentTarget && window.event.currentTarget.classList.contains('nav-link')) {
-        window.event.currentTarget.classList.add('bg-teal-700', 'active');
-    }
+    // Update nav link active state
+    const navLinks = document.querySelectorAll('.nav-link');
+    navLinks.forEach(link => {
+        const onclickAttr = link.getAttribute('onclick');
+        if (onclickAttr && (onclickAttr.includes(`'${pageId}'`) || onclickAttr.includes(`"${pageId}"`))) {
+            link.classList.add('bg-teal-700', 'active');
+        }
+    });
 
     if (pageId === 'report') {
         renderReportProfitSummary();
