@@ -591,7 +591,16 @@ function addToCart(p) {
         existing.Qty += 1;
         existing.Total = existing.Qty * existing.Harga_Satuan;
     } else {
-        cart.push({ SKU: p.SKU, Nama_Produk: p.Nama_Produk, Satuan: p.Satuan, Harga_Satuan: p.Perkiraan_Harga_Rp || 0, Qty: 1, Total: p.Perkiraan_Harga_Rp || 0 });
+        const basePrice = p.Perkiraan_Harga_Rp || 0;
+        cart.push({ 
+            SKU: p.SKU, 
+            Nama_Produk: p.Nama_Produk, 
+            Satuan: p.Satuan, 
+            Harga_Satuan: basePrice, 
+            Base_Price: basePrice, // Simpan harga asli untuk perhitungan proporsional
+            Qty: 1, 
+            Total: basePrice 
+        });
     }
     renderCart();
     const searchInput = document.getElementById('search-input');
@@ -608,20 +617,25 @@ function renderCart() {
         total += item.Total;
         const div = document.createElement('div');
         div.className = "flex justify-between items-center border-b border-gray-50 pb-2";
+        const displayQty = Number(item.Qty).toLocaleString('id-ID', { maximumFractionDigits: 3 });
         div.innerHTML = `
             <div class="flex-1">
                 <h4 class="text-xs font-bold">${item.Nama_Produk}</h4>
-                <div class="flex items-center mt-1">
-                    <span class="text-[10px] text-gray-400 mr-2">${item.Qty} x </span>
-                    <input type="number" 
-                           class="w-20 px-1 py-0.5 text-[10px] border border-gray-200 rounded focus:border-teal-500 focus:outline-none" 
-                           value="${item.Harga_Satuan}" 
-                           onchange="updateManualPrice(${index}, this.value)">
+                <div class="flex flex-col mt-1">
+                    <span class="text-[9px] text-gray-400 italic">${displayQty} ${item.Satuan || ''} @ ${formatRupiah(item.Base_Price)}</span>
+                    <div class="flex items-center mt-0.5">
+                        <span class="text-[10px] text-gray-500 mr-1">Total: Rp</span>
+                        <input type="number" 
+                               class="w-24 px-1 py-0.5 text-[10px] font-bold border border-gray-200 rounded focus:border-teal-500 focus:outline-none" 
+                               value="${item.Total}" 
+                               title="Masukkan total harga untuk menyesuaikan jumlah otomatis"
+                               onchange="updateManualPrice(${index}, this.value)">
+                    </div>
                 </div>
             </div>
             <div class="flex items-center space-x-2">
                 <button onclick="updateQty(${index}, -1)" class="text-gray-400 hover:text-red-500"><i class="fas fa-minus-circle"></i></button>
-                <span class="text-xs font-bold">${item.Qty}</span>
+                <span class="text-xs font-bold">${displayQty}</span>
                 <button onclick="updateQty(${index}, 1)" class="text-gray-400 hover:text-green-500"><i class="fas fa-plus-circle"></i></button>
             </div>
         `;
@@ -632,11 +646,24 @@ function renderCart() {
     totalEl.innerText = formatRupiah(total);
 }
 
-function updateManualPrice(index, newPrice) {
+function updateManualPrice(index, enteredPrice) {
     if (index < 0 || index >= cart.length) return;
-    const price = parseFloat(newPrice) || 0;
-    cart[index].Harga_Satuan = price;
-    cart[index].Total = cart[index].Qty * price;
+    const item = cart[index];
+    const total = parseFloat(enteredPrice) || 0;
+    const basePrice = item.Base_Price || item.Harga_Satuan;
+
+    if (basePrice > 0) {
+        // Hitung Qty proporsional: Total / Harga Satuan Asli
+        item.Qty = total / basePrice;
+        item.Total = total;
+        // Harga_Satuan tetap menggunakan basePrice agar perhitungan di backend konsisten
+        item.Harga_Satuan = basePrice;
+    } else {
+        item.Total = total;
+        item.Qty = 1;
+        item.Harga_Satuan = total;
+    }
+    
     renderCart();
 }
 
