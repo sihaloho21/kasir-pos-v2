@@ -641,6 +641,7 @@ function addToCart(p) {
         Nama_Produk: p.Nama_Produk, 
         Satuan: p.Satuan, 
         Harga_Satuan: basePrice, 
+        Harga_Modal_Rp: p.Harga_Modal_Rp || 0,
         Base_Price: basePrice, // Simpan harga asli untuk perhitungan proporsional
         Qty: 1, 
         Total: basePrice,
@@ -659,6 +660,7 @@ function renderCart() {
     let total = 0;
     cart.forEach((item, index) => {
         total += item.Total;
+        const profit = item.Total - (item.Harga_Modal_Rp * item.Qty);
         const div = document.createElement('div');
         div.className = "flex justify-between items-center border-b border-gray-50 pb-2";
         const displayQty = Number(item.Qty).toLocaleString('id-ID', { maximumFractionDigits: 3 });
@@ -674,6 +676,9 @@ function renderCart() {
                                value="${item.Total}" 
                                title="Masukkan total harga untuk menyesuaikan jumlah otomatis"
                                onchange="updateManualPriceByCartId('${item.cartId}', this.value)">
+                    </div>
+                    <div class="mt-1">
+                        <span class="text-[9px] font-bold text-green-600">Laba: ${formatRupiah(profit)}</span>
                     </div>
                 </div>
             </div>
