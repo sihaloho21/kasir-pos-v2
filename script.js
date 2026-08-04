@@ -641,7 +641,7 @@ function addToCart(p) {
         Nama_Produk: p.Nama_Produk, 
         Satuan: p.Satuan, 
         Harga_Satuan: basePrice, 
-        Harga_Modal_Rp: p.Harga_Modal_Rp || 0,
+        Harga_Modal_Rp: cleanNumber(p.Harga_Modal_Rp),
         Base_Price: basePrice, // Simpan harga asli untuk perhitungan proporsional
         Qty: 1, 
         Total: basePrice,
@@ -660,7 +660,8 @@ function renderCart() {
     let total = 0;
     cart.forEach((item, index) => {
         total += item.Total;
-        const profit = item.Total - (item.Harga_Modal_Rp * item.Qty);
+        const modalPrice = cleanNumber(item.Harga_Modal_Rp);
+        const profit = item.Total - (modalPrice * item.Qty);
         const div = document.createElement('div');
         div.className = "flex justify-between items-center border-b border-gray-50 pb-2";
         const displayQty = Number(item.Qty).toLocaleString('id-ID', { maximumFractionDigits: 3 });
@@ -669,16 +670,16 @@ function renderCart() {
                 <h4 class="text-xs font-bold">${item.Nama_Produk}</h4>
                 <div class="flex flex-col mt-1">
                     <span class="text-[9px] text-gray-400 italic">${displayQty} ${item.Satuan || ''} @ ${formatRupiah(item.Base_Price)}</span>
-                    <div class="flex items-center mt-0.5">
-                        <span class="text-[10px] text-gray-500 mr-1">Total: Rp</span>
-                        <input type="number" 
-                               class="w-24 px-1 py-0.5 text-[10px] font-bold border border-gray-200 rounded focus:border-teal-500 focus:outline-none" 
-                               value="${item.Total}" 
-                               title="Masukkan total harga untuk menyesuaikan jumlah otomatis"
-                               onchange="updateManualPriceByCartId('${item.cartId}', this.value)">
-                    </div>
-                    <div class="mt-1">
-                        <span class="text-[9px] font-bold text-green-600">Laba: ${formatRupiah(profit)}</span>
+                    <div class="flex items-center justify-between mt-0.5">
+                        <div class="flex items-center">
+                            <span class="text-[10px] text-gray-500 mr-1">Total: Rp</span>
+                            <input type="number" 
+                                   class="w-24 px-1 py-0.5 text-[10px] font-bold border border-gray-200 rounded focus:border-teal-500 focus:outline-none" 
+                                   value="${item.Total}" 
+                                   title="Masukkan total harga untuk menyesuaikan jumlah otomatis"
+                                   onchange="updateManualPriceByCartId('${item.cartId}', this.value)">
+                        </div>
+                        <span class="text-[10px] font-bold text-green-600 ml-2">Net Profit: ${formatRupiah(profit)}</span>
                     </div>
                 </div>
             </div>
@@ -785,6 +786,14 @@ function filterProducts() {
         return matchesSearch;
     });
     renderProducts(filtered);
+}
+
+function cleanNumber(val) {
+    if (typeof val === 'number') return val;
+    if (!val) return 0;
+    let clean = val.toString().replace(/[^\d.-]/g, '').replace(',', '.');
+    let num = parseFloat(clean);
+    return isNaN(num) ? 0 : num;
 }
 
 function formatRupiah(num) {
