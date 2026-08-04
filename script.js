@@ -586,22 +586,18 @@ function renderPinnedProducts() {
 
 function addToCart(p) {
     if (!p || !p.SKU) return;
-    const existing = cart.find(item => item.SKU === p.SKU);
-    if (existing) {
-        existing.Qty += 1;
-        existing.Total = existing.Qty * existing.Harga_Satuan;
-    } else {
-        const basePrice = p.Perkiraan_Harga_Rp || 0;
-        cart.push({ 
-            SKU: p.SKU, 
-            Nama_Produk: p.Nama_Produk, 
-            Satuan: p.Satuan, 
-            Harga_Satuan: basePrice, 
-            Base_Price: basePrice, // Simpan harga asli untuk perhitungan proporsional
-            Qty: 1, 
-            Total: basePrice 
-        });
-    }
+    // Selalu tambah baris baru, tidak merge dengan item yang sama
+    const basePrice = p.Perkiraan_Harga_Rp || 0;
+    cart.push({ 
+        SKU: p.SKU, 
+        Nama_Produk: p.Nama_Produk, 
+        Satuan: p.Satuan, 
+        Harga_Satuan: basePrice, 
+        Base_Price: basePrice, // Simpan harga asli untuk perhitungan proporsional
+        Qty: 1, 
+        Total: basePrice,
+        cartId: Date.now() + Math.random() // ID unik untuk setiap baris
+    });
     renderCart();
     const searchInput = document.getElementById('search-input');
     if (searchInput) searchInput.focus();
@@ -629,14 +625,14 @@ function renderCart() {
                                class="w-24 px-1 py-0.5 text-[10px] font-bold border border-gray-200 rounded focus:border-teal-500 focus:outline-none" 
                                value="${item.Total}" 
                                title="Masukkan total harga untuk menyesuaikan jumlah otomatis"
-                               onchange="updateManualPrice(${index}, this.value)">
+                               onchange="updateManualPriceByCartId('${item.cartId}', this.value)">
                     </div>
                 </div>
             </div>
             <div class="flex items-center space-x-2">
-                <button onclick="updateQty(${index}, -1)" class="text-gray-400 hover:text-red-500"><i class="fas fa-minus-circle"></i></button>
+                <button onclick="updateQtyByCartId('${item.cartId}', -1)" class="text-gray-400 hover:text-red-500"><i class="fas fa-minus-circle"></i></button>
                 <span class="text-xs font-bold">${displayQty}</span>
-                <button onclick="updateQty(${index}, 1)" class="text-gray-400 hover:text-green-500"><i class="fas fa-plus-circle"></i></button>
+                <button onclick="updateQtyByCartId('${item.cartId}', 1)" class="text-gray-400 hover:text-green-500"><i class="fas fa-plus-circle"></i></button>
             </div>
         `;
         fragment.appendChild(div);
@@ -667,11 +663,45 @@ function updateManualPrice(index, enteredPrice) {
     renderCart();
 }
 
+function updateManualPriceByCartId(cartId, enteredPrice) {
+    const item = cart.find(i => i.cartId == cartId);
+    if (!item) return;
+    const total = parseFloat(enteredPrice) || 0;
+    const basePrice = item.Base_Price || item.Harga_Satuan;
+
+    if (basePrice > 0) {
+        // Hitung Qty proporsional: Total / Harga Satuan Asli
+        item.Qty = total / basePrice;
+        item.Total = total;
+        // Harga_Satuan tetap menggunakan basePrice agar perhitungan di backend konsisten
+        item.Harga_Satuan = basePrice;
+    } else {
+        item.Total = total;
+        item.Qty = 1;
+        item.Harga_Satuan = total;
+    }
+    
+    renderCart();
+}
+
 function updateQty(index, delta) {
     if (index < 0 || index >= cart.length) return;
     cart[index].Qty += delta;
     if (cart[index].Qty <= 0) cart.splice(index, 1);
     else cart[index].Total = cart[index].Qty * cart[index].Harga_Satuan;
+    renderCart();
+}
+
+function updateQtyByCartId(cartId, delta) {
+    const item = cart.find(i => i.cartId == cartId);
+    if (!item) return;
+    item.Qty += delta;
+    if (item.Qty <= 0) {
+        const index = cart.indexOf(item);
+        if (index > -1) cart.splice(index, 1);
+    } else {
+        item.Total = item.Qty * item.Harga_Satuan;
+    }
     renderCart();
 }
 
