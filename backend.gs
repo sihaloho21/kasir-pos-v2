@@ -132,13 +132,17 @@ function doGet(e) {
 function doPost(e) {
   try {
     const data = JSON.parse(e.postData.contents);
-    if (data.action === 'processFishSale') return createResponse(processFishSale(data));
-    if (data.action === 'processDigitalSale') return createResponse(processDigitalSale(data));
-    if (data.action === 'updateProductPrice') return createResponse(updateProductPrice(data));
-    if (data.action === 'saveManualMonthly') return createResponse(saveManualMonthly(data));
-    return createResponse(processTransaction(data));
+    const action = data.action;
+    
+    if (action === 'processFishSale') return createResponse(processFishSale(data));
+    if (action === 'processDigitalSale') return createResponse(processDigitalSale(data));
+    if (action === 'updateProductPrice') return createResponse(updateProductPrice(data));
+    if (action === 'saveManualMonthly') return createResponse(saveManualMonthly(data));
+    if (action === 'processTransaction' || data.items) return createResponse(processTransaction(data));
+    
+    return createResponse({ status: 'error', message: 'Action tidak dikenali: ' + action });
   } catch (err) {
-    return createResponse({ status: 'error', message: err.toString() });
+    return createResponse({ status: 'error', message: 'Server Error: ' + err.toString() });
   }
 }
 
@@ -428,7 +432,12 @@ function saveManualMonthly(d) {
   const data = targetSheet.getDataRange().getValues();
   let foundRow = -1;
   for (let i = 1; i < data.length; i++) {
-    if (data[i][0] === d.bulan) {
+    // Pastikan perbandingan bulan menggunakan string untuk menghindari masalah format Date
+    let rowBulan = data[i][0];
+    if (rowBulan instanceof Date) {
+      rowBulan = Utilities.formatDate(rowBulan, "GMT+7", "yyyy-MM");
+    }
+    if (String(rowBulan) === String(d.bulan)) {
       foundRow = i + 1;
       break;
     }

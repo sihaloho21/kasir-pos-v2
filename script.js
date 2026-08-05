@@ -214,6 +214,7 @@ async function processDigitalSale() {
         btn.innerText = 'MENYIMPAN...';
         const response = await fetch(API_URL, {
             method: 'POST',
+            headers: { 'Content-Type': 'text/plain' },
             body: JSON.stringify({ action: 'processDigitalSale', nominal, hargaJual, catatan })
         });
         const res = await response.json();
@@ -260,6 +261,7 @@ async function processFishSale() {
         btn.innerText = 'MENYIMPAN...';
         const response = await fetch(API_URL, {
             method: 'POST',
+            headers: { 'Content-Type': 'text/plain' },
             body: JSON.stringify({ action: 'processFishSale', jenisIkan, qtyKg, hargaJual, cogsKg })
         });
         const res = await response.json();
@@ -767,7 +769,11 @@ async function processPayment() {
     try {
         btn.disabled = true;
         btn.innerText = 'PROSES...';
-        const response = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ items: cart }) });
+        const response = await fetch(API_URL, { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'text/plain' },
+            body: JSON.stringify({ action: 'processTransaction', items: cart }) 
+        });
         const res = await response.json();
         if (res.status === 'success') {
             showNotification('Berhasil!', 'Transaksi Berhasil Disimpan');
@@ -825,6 +831,7 @@ async function submitPriceUpdate() {
         btn.innerText = 'MENYIMPAN...';
         const response = await fetch(API_URL, {
             method: 'POST',
+            headers: { 'Content-Type': 'text/plain' },
             body: JSON.stringify({ action: 'updateProductPrice', sku, hargaModal, hargaJual })
         });
         const res = await response.json();
@@ -908,6 +915,7 @@ async function submitManualMonthly() {
         btn.innerText = 'MENYIMPAN...';
         const response = await fetch(API_URL, {
             method: 'POST',
+            headers: { 'Content-Type': 'text/plain' },
             body: JSON.stringify({ action: 'saveManualMonthly', bulan, warung, fish, digital })
         });
         const res = await response.json();
