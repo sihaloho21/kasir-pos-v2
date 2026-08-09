@@ -646,6 +646,7 @@ function addToCart(p) {
         Harga_Modal_Rp: cleanNumber(p.Harga_Modal_Rp),
         Base_Price: basePrice, // Simpan harga asli untuk perhitungan proporsional
         Qty: 1, 
+        Discount: 0,
         Total: basePrice,
         cartId: Date.now() + Math.random() // ID unik untuk setiap baris
     });
@@ -670,22 +671,32 @@ function renderCart() {
         div.innerHTML = `
             <div class="flex-1">
                 <h4 class="text-xs font-bold">${item.Nama_Produk}</h4>
-                <div class="flex flex-col mt-1">
-                    <span class="text-[9px] text-gray-400 italic">${displayQty} ${item.Satuan || ''} @ ${formatRupiah(item.Base_Price)}</span>
-                    <div class="flex items-center justify-between mt-0.5">
+                <div class="flex flex-col mt-1 space-y-1">
+                    <div class="flex justify-between items-center text-[9px] text-gray-400 italic">
+                        <span>${displayQty} ${item.Satuan || ''} @ ${formatRupiah(item.Base_Price)}</span>
+                        <span class="text-[10px] font-bold text-green-600">${formatRupiah(profit)}</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
                         <div class="flex items-center">
-                            <span class="text-[10px] text-gray-500 mr-1">Total: Rp</span>
+                            <span class="text-[9px] text-gray-500 mr-1">Total:</span>
                             <input type="number" 
-                                   class="w-24 px-1 py-0.5 text-[10px] font-bold border border-gray-200 rounded focus:border-teal-500 focus:outline-none" 
+                                   class="w-full px-1 py-0.5 text-[10px] font-bold border border-gray-200 rounded focus:border-teal-500 focus:outline-none" 
                                    value="${item.Total}" 
-                                   title="Masukkan total harga untuk menyesuaikan jumlah otomatis"
+                                   title="Total harga setelah diskon"
                                    onchange="updateManualPriceByCartId('${item.cartId}', this.value)">
                         </div>
-                        <span class="text-[10px] font-bold text-green-600 ml-2">Net Profit: ${formatRupiah(profit)}</span>
+                        <div class="flex items-center">
+                            <span class="text-[9px] text-gray-500 mr-1">Diskon:</span>
+                            <input type="number" 
+                                   class="w-full px-1 py-0.5 text-[10px] font-bold border border-gray-200 rounded focus:border-teal-500 focus:outline-none" 
+                                   value="${item.Discount || 0}" 
+                                   title="Diskon per item (Rp)"
+                                   onchange="updateDiscountByCartId('${item.cartId}', this.value)">
+                        </div>
                     </div>
                 </div>
             </div>
-            <div class="flex items-center space-x-2">
+            <div class="flex items-center space-x-2 ml-2">
                 <button onclick="updateQtyByCartId('${item.cartId}', -1)" class="text-gray-400 hover:text-red-500"><i class="fas fa-minus-circle"></i></button>
                 <span class="text-xs font-bold">${displayQty}</span>
                 <button onclick="updateQtyByCartId('${item.cartId}', 1)" class="text-gray-400 hover:text-green-500"><i class="fas fa-plus-circle"></i></button>
@@ -696,6 +707,17 @@ function renderCart() {
     container.innerHTML = cart.length ? '' : '<p class="text-center text-gray-400 text-xs mt-10">Kosong</p>';
     if (cart.length) container.appendChild(fragment);
     totalEl.innerText = formatRupiah(total);
+}
+
+function updateDiscountByCartId(cartId, discountVal) {
+    const item = cart.find(i => i.cartId == cartId);
+    if (!item) return;
+    const discount = parseFloat(discountVal) || 0;
+    item.Discount = discount;
+    const basePrice = item.Base_Price || item.Harga_Satuan;
+    const grossTotal = item.Qty * basePrice;
+    item.Total = Math.max(0, grossTotal - discount);
+    renderCart();
 }
 
 function updateManualPrice(index, enteredPrice) {
@@ -728,12 +750,13 @@ function updateManualPriceByCartId(cartId, enteredPrice) {
     if (basePrice > 0) {
         // Hitung Qty proporsional: Total / Harga Satuan Asli
         item.Qty = total / basePrice;
+        item.Discount = 0;
         item.Total = total;
-        // Harga_Satuan tetap menggunakan basePrice agar perhitungan di backend konsisten
         item.Harga_Satuan = basePrice;
     } else {
         item.Total = total;
         item.Qty = 1;
+        item.Discount = 0;
         item.Harga_Satuan = total;
     }
     
@@ -756,7 +779,9 @@ function updateQtyByCartId(cartId, delta) {
         const index = cart.indexOf(item);
         if (index > -1) cart.splice(index, 1);
     } else {
-        item.Total = item.Qty * item.Harga_Satuan;
+        const basePrice = item.Base_Price || item.Harga_Satuan;
+        const grossTotal = item.Qty * basePrice;
+        item.Total = Math.max(0, grossTotal - (item.Discount || 0));
     }
     renderCart();
 }
